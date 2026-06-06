@@ -1,0 +1,131 @@
+import fs from "node:fs";
+import path from "node:path";
+import { z } from "zod";
+import { MultiServerMCPClient, type ClientConfig } from "@langchain/mcp-adapters";
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import { mcpServersForRole, type AgentRole } from "@/agents/path-permissions.js";
+
+const stdioServerSchema = z.object({
+  name: z.string().min(1),
+  transport: z.literal("stdio"),
+  command: z.string().min(1),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+});
+
+const sseServerSchema = z.object({
+  name: z.string().min(1),
+  transport: z.literal("sse"),
+  url: z.string().url(),
+});
+
+export const mcpServerSchema = z.discriminatedUnion("transport", [
+  stdioServerSchema,
+  sseServerSchema,
+]);
+
+export const mcpConfigSchema = z.object({
+  servers: z.array(mcpServerSchema),
+});
+
+export type McpConfig = z.infer<typeof mcpConfigSchema>;
+export type McpServer = z.infer<typeof mcpServerSchema>;
+
+export type McpToolsResult = {
+  tools: StructuredToolInterface[];
+  disconnect: () => Promise<void>;
+};
+
+const EMPTY: McpToolsResult = {
+  tools: [],
+  disconnect: async () => {},
+};
+
+export async function loadMcpTools(role: AgentRole, repoRoot: string): Promise<McpToolsResult> {
+  const allowedNames = mcpServersForRole(role);
+  if (allowedNames.length === 0) {
+    return EMPTY;
+  }
+
+  const configPath = path.join(repoRoot, "pet.mcp.json");
+  if (!fs.existsSync(configPath)) {
+    return EMPTY;
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch {
+    throw new Error(`Failed to parse pet.mcp.json: invalid JSON`);
+  }
+
+  const parsed = mcpConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(`pet.mcp.json is invalid: ${parsed.error.message}`);
+  }
+
+  const allowed = parsed.data.servers.filter((s) => allowedNames.includes(s.name));
+  if (allowed.length === 0) {
+    return EMPTY;
+  }
+
+  const mcpServers: Record<string, unknown> = {};
+  for (const s of allowed) {
+    if (s.transport === "stdio") {
+      mcpServers[s.name] = {
+        transport: "stdio" as const,
+        command: s.command,
+        args: s.args ?? [],
+        ...(s.env !== undefined ? { env: s.env } : {}),
+      };
+    } else {
+      mcpServers[s.name] = {
+        transport: "sse" as const,
+        url: s.url,
+      };
+    }
+  }
+
+  const client = new MultiServerMCPClient({ mcpServers } as ClientConfig);
+  const tools = await client.getTools();
+
+  return {
+    tools,
+    disconnect: () => client.close(),
+  };
+}
+
+export function validateMcpConfig(repoRoot: string): string[] {
+  const configPath = path.join(repoRoot, "pet.mcp.json");
+  if (!fs.existsSync(configPath)) {
+    return [];
+  }
+
+  const errors: string[] = [];
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch {
+    return ["pet.mcp.json: invalid JSON"];
+  }
+
+  const parsed = mcpConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      errors.push(`pet.mcp.json: ${issue.path.join(".")}: ${issue.message}`);
+    }
+    return errors;
+  }
+
+  const names = parsed.data.servers.map((s) => s.name);
+  const seen = new Set<string>();
+  for (const name of names) {
+    if (seen.has(name)) {
+      errors.push(`pet.mcp.json: duplicate server name "${name}"`);
+    }
+    seen.add(name);
+  }
+
+  return errors;
+}

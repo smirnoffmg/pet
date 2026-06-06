@@ -1,6 +1,6 @@
 ---
 id: PROB-0001
-status: proposed
+status: accepted
 target_metric_ids:
   - MET-0001
 ---

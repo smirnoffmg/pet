@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+        env:
+          PET_SKIP_POSTINSTALL: "1"
+      - name: Enforce LLM import boundary
+        run: |
+          banned=$(grep -r --include="*.ts" \
+            -E 'from "@langchain/(anthropic|openai|aws|community|google-vertexai|ollama)"' \
+            src/ \
+            --exclude="provider-factory.ts" \
+            -l || true)
+          if [ -n "$banned" ]; then
+            echo "Direct @langchain provider imports found outside provider-factory.ts:"
+            echo "$banned"
+            exit 1
+          fi
+      - run: npm run build
+      - run: node dist/pet.js validate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run validate

@@ -1,0 +1,4 @@
+npm run validate
+npm run typecheck
+npm run lint
+npm run test

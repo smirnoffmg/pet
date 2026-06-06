@@ -1,0 +1,9 @@
+dist
+node_modules
+
+# Accepted decision artifact — body must match git (immutability); do not auto-format.
+doc/product/features/0004-live-deliver-e2e-verification.md
+
+# Vitest mutates these trees (mock agents); formatting is not stable across runs.
+tests/fixtures/doc-deliver/
+tests/fixtures/doc-discover/
