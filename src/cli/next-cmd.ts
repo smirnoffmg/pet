@@ -4,6 +4,7 @@ import type { ParsedArtifact } from "@/store/parse.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
+import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
 import { featureBodyIsScaffold } from "@/controllers/discovery-helpers.js";
 
 export type Action = { command: string; reason: string };
@@ -98,6 +99,46 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
   for (const a of byKind("hypothesis").filter(accepted).sort(byId)) {
     if (!hypIdsWithSol.has(fm(a).id)) {
       actions.push({ command: `pet discover --hypothesis ${fm(a).id}`, reason: title(a) });
+    }
+  }
+
+  // Priority 9: proposed QA plans → accept them
+  for (const a of byKind("qa_plan").filter(proposed).sort(byId)) {
+    actions.push({ command: `pet accept qa-plan ${fm(a).id}`, reason: title(a) });
+  }
+
+  // Priority 10: accepted features with all tasks done and no QA plan → run QA agent
+  const featIdsWithQaPlan = new Set(
+    byKind("qa_plan")
+      .filter((a) => fm(a).status !== "superseded")
+      .map((q) => (q.frontmatter as QaPlanFrontmatter).feature_id as string),
+  );
+  const tasksByFeatureId = new Map<string, ParsedArtifact[]>();
+  for (const t of byKind("task")) {
+    const fid = (t.frontmatter as DevTaskFrontmatter).feature_id as string;
+    tasksByFeatureId.set(fid, [...(tasksByFeatureId.get(fid) ?? []), t]);
+  }
+  for (const a of byKind("feature").filter(accepted).sort(byId)) {
+    const id = fm(a).id;
+    if (featIdsWithQaPlan.has(id)) continue;
+    const tasks = tasksByFeatureId.get(id) ?? [];
+    const hasTasks = tasks.length > 0;
+    const allDone = hasTasks && tasks.every((t) => fm(t).status === "done");
+    if (allDone) {
+      actions.push({ command: `pet qa --feature ${id}`, reason: title(a) });
+    }
+  }
+
+  // Priority 11: proposed releases with scaffold body → run DevOps agent to enrich
+  // Priority 12: proposed releases with real body → accept them
+  // Note: featureBodyIsScaffold works here because release templates use the same
+  // title + empty-section-header structure. If release templates gain pre-filled
+  // content, introduce a dedicated releaseBodyIsScaffold instead.
+  for (const a of byKind("release").filter(proposed).sort(byId)) {
+    if (featureBodyIsScaffold(a.body)) {
+      actions.push({ command: `pet release --release ${fm(a).id}`, reason: title(a) });
+    } else {
+      actions.push({ command: `pet accept release ${fm(a).id}`, reason: title(a) });
     }
   }
 

@@ -5,3 +5,5 @@
 - 2026-06-07T10:16:56.083Z — spawn FeatureDesigner for SOL-0002 "CLI-assisted decision capture at commit time" → + product/03-features/0004-feature-for-cli-assisted-decision-capture-at-commit-time.md
 
 - 2026-06-07T10:16:56.113Z — orchestrate: spawn FeatureDesigner for SOL-0002 "CLI-assisted decision capture at commit time"
+
+- 2026-06-07T20:15:22.447Z — spawn FeatureDesigner for SOL-0003 "Agent-generated onboarding trace from code to rationale" → + product/03-features/0004-code-to-artifact-link-index.md, + product/03-features/0005-pet-trace-cli-command.md, + product/03-features/0006-static-trace-export.md

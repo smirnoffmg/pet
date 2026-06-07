@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import React, { useEffect, useMemo, useState } from "react";
 import { Box, Text, useInput, useStdin, useStdout } from "ink";
 import { scanArtifacts } from "@/store/scan.js";
@@ -20,7 +22,7 @@ type ArtifactRow = {
   hasChildren: boolean;
   isCollapsed: boolean;
 };
-type ActionRow = { type: "action"; action: Action; actionIndex: number };
+type ActionRow = { type: "action"; action: Action; actionIndex: number; depth: number };
 type Row = ArtifactRow | ActionRow;
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -60,6 +62,19 @@ function extractArtifactId(command: string): string | null {
   return match?.[1] ?? null;
 }
 
+export function nextAutoCommand(
+  completedCommand: string,
+  artifacts: ParsedArtifact[],
+): string | null {
+  if (!completedCommand.startsWith("pet accept")) return null;
+  const acceptedId = extractArtifactId(completedCommand);
+  if (!acceptedId) return null;
+  const nextActions = computeArtifactActions(acceptedId, artifacts);
+  const next = nextActions[0];
+  if (!next || next.command.startsWith("pet accept")) return null;
+  return next.command;
+}
+
 function buildRows(
   artifacts: ParsedArtifact[],
   expanded: string | null,
@@ -90,17 +105,18 @@ function buildRows(
     tasksByFeat.set(fid, [...(tasksByFeat.get(fid) ?? []), task]);
   }
 
-  function maybeInjectActions(id: string): void {
+  function maybeInjectActions(id: string, depth: number): void {
     if (expanded !== id) return;
     if (expandedActions.length === 0) {
       rows.push({
         type: "action",
         action: { command: "(no actions available)", reason: "" },
         actionIndex: -1,
+        depth,
       });
     } else {
       expandedActions.forEach((action, actionIndex) => {
-        rows.push({ type: "action", action, actionIndex });
+        rows.push({ type: "action", action, actionIndex, depth });
       });
     }
   }
@@ -116,7 +132,7 @@ function buildRows(
       hasChildren: hypChildren.length > 0,
       isCollapsed: hypCollapsed,
     });
-    maybeInjectActions(hypId);
+    maybeInjectActions(hypId, 0);
     if (hypCollapsed) continue;
 
     for (const sol of hypChildren.sort(byId)) {
@@ -130,7 +146,7 @@ function buildRows(
         hasChildren: solChildren.length > 0,
         isCollapsed: solCollapsed,
       });
-      maybeInjectActions(solId);
+      maybeInjectActions(solId, 1);
       if (solCollapsed) continue;
 
       for (const feat of solChildren.sort(byId)) {
@@ -144,7 +160,7 @@ function buildRows(
           hasChildren: featChildren.length > 0,
           isCollapsed: featCollapsed,
         });
-        maybeInjectActions(featId);
+        maybeInjectActions(featId, 2);
         if (featCollapsed) continue;
 
         for (const task of featChildren.sort(byId)) {
@@ -156,7 +172,7 @@ function buildRows(
             hasChildren: false,
             isCollapsed: false,
           });
-          maybeInjectActions(taskId);
+          maybeInjectActions(taskId, 3);
         }
       }
     }
@@ -167,11 +183,11 @@ function buildRows(
 
   for (const m of metrics) {
     rows.push({ type: "artifact", artifact: m, depth: 0, hasChildren: false, isCollapsed: false });
-    maybeInjectActions(fm(m).id);
+    maybeInjectActions(fm(m).id, 0);
   }
   for (const r of releases) {
     rows.push({ type: "artifact", artifact: r, depth: 0, hasChildren: false, isCollapsed: false });
-    maybeInjectActions(fm(r).id);
+    maybeInjectActions(fm(r).id, 0);
   }
 
   return rows;
@@ -185,6 +201,23 @@ function statusColor(status: string): "green" | "yellow" | "gray" | "blue" | "cy
   if (status === "in_progress") return "blue";
   if (status === "review") return "cyan";
   return "yellow";
+}
+
+interface HeaderProps {
+  repoName: string;
+  branch: string;
+  count: number;
+}
+
+function Header({ repoName, branch, count }: HeaderProps) {
+  return (
+    <Box borderStyle="single" marginBottom={1} justifyContent="space-between">
+      <Text bold color="cyan">
+        pet
+      </Text>
+      <Text dimColor>{`${repoName}  [${branch}]  ${count} artifacts`}</Text>
+    </Box>
+  );
 }
 
 interface TreeRowViewProps {
@@ -236,7 +269,7 @@ interface ActionRowViewProps {
 function ActionRowView({ row, focused }: ActionRowViewProps) {
   const noOp = row.actionIndex === -1;
   return (
-    <Box paddingLeft={4}>
+    <Box paddingLeft={row.depth * 2 + 4}>
       {noOp ? (
         <Text dimColor>
           {"  "}
@@ -289,18 +322,42 @@ function DockedStrip({ state }: DockedStripProps) {
   );
 }
 
+interface FooterProps {
+  phase: Phase;
+  onActionRow: boolean;
+  cursor: number;
+  total: number;
+}
+
+function Footer({ phase, onActionRow, cursor, total }: FooterProps) {
+  const hint =
+    phase === "running"
+      ? "[Ctrl-C] abort"
+      : onActionRow
+        ? "↑↓ move  ↵ run  Esc back"
+        : "↑↓ move   ↵ actions   ←/→ collapse/expand   q quit";
+  return (
+    <Box borderStyle="single" justifyContent="space-between">
+      <Text dimColor>{hint}</Text>
+      {phase !== "running" && <Text dimColor>{`${cursor} / ${total}`}</Text>}
+    </Box>
+  );
+}
+
 // ─── Root component ───────────────────────────────────────────────────────────
 
 interface TreeUIProps {
   docRoot: string;
+  repoName: string;
+  branch: string;
   onExit: (code: number) => void;
 }
 
-const HEADER_LINES = 2;
-const CONTROLS_LINES = 2;
+const HEADER_LINES = 6; // box (3) + marginBottom (1) + col-header (1) + divider (1)
+const CONTROLS_LINES = 3; // footer box: border + content + border
 const DOCKED_MAX_LINES = 8; // marginTop + border + "Running" + 4 calls + border
 
-export function TreeUI({ docRoot, onExit }: TreeUIProps) {
+export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
   const [artifacts, setArtifacts] = useState<ParsedArtifact[]>([]);
   const [cursor, setCursor] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -334,6 +391,33 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
   useEffect(() => {
     refresh();
   }, []); // mount only
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    let watcher: ReturnType<typeof fs.watch> | null = null;
+    try {
+      watcher = fs.watch(docRoot, { recursive: true }, () => {
+        if (timer !== null) clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (cancelled) return;
+          const result = scanArtifacts(docRoot);
+          if (result.isOk()) setArtifacts(result.value);
+          timer = null;
+        }, 150);
+      });
+      watcher.on("error", () => {
+        // Watcher error (e.g. fd limit hit) — degrade silently
+      });
+    } catch {
+      // fs.watch with recursive:true not supported on this platform — no-op.
+    }
+    return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
+      watcher?.close();
+    };
+  }, [docRoot]);
 
   const rows = useMemo(
     () => buildRows(artifacts, expanded, expandedActions, collapsed),
@@ -369,6 +453,67 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
   }, [phase]);
 
   const { isRawModeSupported } = useStdin();
+
+  function handleSuccess(completedCommand: string): void {
+    const freshScan = scanArtifacts(docRoot);
+    if (freshScan.isOk()) {
+      const freshArtifacts = freshScan.value;
+      setArtifacts(freshArtifacts);
+      const next = nextAutoCommand(completedCommand, freshArtifacts);
+      if (next) {
+        startCommand(next);
+        return;
+      }
+      setExpanded(null);
+      setExpandedActions([]);
+      setCursor(0);
+    } else {
+      setScanError(freshScan.error.message);
+    }
+    setAgentState(null);
+    setPhase("idle");
+  }
+
+  function startCommand(cmd: string): void {
+    const runningArtifactId = extractArtifactId(cmd);
+    setAgentState({ command: cmd, elapsed: 0, recentCalls: [], runningArtifactId });
+    setExpanded(null);
+    setExpandedActions([]);
+    setPhase("running");
+
+    const callbacks: ExecuteCallbacks = {
+      onAgentStart: (role: string) => {
+        setAgentState((prev) => (prev ? { ...prev, command: `${role}: ${cmd}` } : null));
+      },
+      onToolCall: (e: ToolCallEvent) => {
+        setAgentState((prev) => {
+          if (!prev) return null;
+          const entry = `${e.name.padEnd(14)}${e.path}`;
+          return { ...prev, recentCalls: [...prev.recentCalls, entry].slice(-4) };
+        });
+      },
+    };
+
+    void dispatchReplCommand(cmd, callbacks).then((code) => {
+      if (code !== 0) {
+        setAgentState((prev) =>
+          prev
+            ? {
+                ...prev,
+                recentCalls: [...prev.recentCalls, `✗ failed (code ${code})`].slice(-4),
+              }
+            : null,
+        );
+        setTimeout(() => {
+          setAgentState(null);
+          setPhase("idle");
+          refresh();
+        }, 1500);
+      } else {
+        handleSuccess(cmd);
+      }
+    });
+  }
 
   useInput(
     (input, key) => {
@@ -426,48 +571,7 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
         }
 
         if (currentRow.type === "action" && currentRow.actionIndex !== -1) {
-          const { command } = currentRow.action;
-          const runningArtifactId = extractArtifactId(command);
-
-          setAgentState({ command, elapsed: 0, recentCalls: [], runningArtifactId });
-          setExpanded(null);
-          setExpandedActions([]);
-          setPhase("running");
-
-          const callbacks: ExecuteCallbacks = {
-            onAgentStart: (role: string) => {
-              setAgentState((prev) => (prev ? { ...prev, command: `${role}: ${command}` } : null));
-            },
-            onToolCall: (e: ToolCallEvent) => {
-              setAgentState((prev) => {
-                if (!prev) return null;
-                const entry = `${e.name.padEnd(14)}${e.path}`;
-                return { ...prev, recentCalls: [...prev.recentCalls, entry].slice(-4) };
-              });
-            },
-          };
-
-          void dispatchReplCommand(command, callbacks).then((code) => {
-            if (code !== 0) {
-              setAgentState((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      recentCalls: [...prev.recentCalls, `✗ failed (code ${code})`].slice(-4),
-                    }
-                  : null,
-              );
-              setTimeout(() => {
-                setAgentState(null);
-                setPhase("idle");
-                refresh();
-              }, 1500);
-            } else {
-              setAgentState(null);
-              setPhase("idle");
-              refresh();
-            }
-          });
+          startCommand(currentRow.action.command);
           return;
         }
       }
@@ -475,11 +579,6 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
       if (key.escape) {
         setExpanded(null);
         setExpandedActions([]);
-        return;
-      }
-
-      if (input === "r") {
-        refresh();
         return;
       }
 
@@ -499,9 +598,29 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
   }
 
   if (artifacts.length === 0) {
+    const contextPath = path.join(docRoot, "product", "context", "project.md");
+    const initialized = fs.existsSync(contextPath);
+    if (initialized) {
+      const contextContent = fs.readFileSync(contextPath, "utf8");
+      const overviewMatch = /^## Overview\s*\n([\s\S]*?)(?=\n##|$)/m.exec(contextContent);
+      const overview = overviewMatch?.[1]?.trim() ?? "";
+      return (
+        <Box paddingX={1} paddingY={2} flexDirection="column">
+          <Text dimColor>{"No artifacts yet."}</Text>
+          {overview.length > 0 && (
+            <Box marginTop={1}>
+              <Text>{overview}</Text>
+            </Box>
+          )}
+          <Box marginTop={1}>
+            <Text dimColor>{'Start: pet new hypothesis "Your problem statement"'}</Text>
+          </Box>
+        </Box>
+      );
+    }
     return (
       <Box paddingX={1} paddingY={2}>
-        <Text dimColor>{"No artifacts found. Run `pet init` to scaffold doc/."}</Text>
+        <Text dimColor>{"Run `pet init` to analyse this repo first."}</Text>
       </Box>
     );
   }
@@ -514,58 +633,45 @@ export function TreeUI({ docRoot, onExit }: TreeUIProps) {
   const belowCount = Math.max(0, rows.length - scrollOffset - viewportHeight);
 
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          pet
-        </Text>
-        <Text dimColor>
-          {" pipeline tree"}
-          {rows.length > 0 ? `  ${cursor + 1}/${rows.length}` : ""}
-        </Text>
-      </Box>
+    <Box flexDirection="column" height={stdout.rows ?? 24}>
+      <Header repoName={repoName} branch={branch} count={artifacts.length} />
 
-      {aboveCount > 0 && <Text dimColor>{`  ↑ ${aboveCount} more`}</Text>}
+      <Box flexDirection="column" paddingX={1} flexGrow={1}>
+        <Text dimColor>{"    ID        STATUS     TITLE"}</Text>
+        <Text dimColor>{"    " + "─".repeat(68)}</Text>
 
-      {visibleRows.map((row, i) => {
-        const absoluteIndex = scrollOffset + i;
-        const focused = absoluteIndex === cursor;
-        if (row.type === "artifact") {
-          const id = fm(row.artifact).id;
+        {aboveCount > 0 && <Text dimColor>{`  ↑ ${aboveCount} more`}</Text>}
+
+        {visibleRows.map((row, i) => {
+          const absoluteIndex = scrollOffset + i;
+          const focused = absoluteIndex === cursor;
+          if (row.type === "artifact") {
+            const id = fm(row.artifact).id;
+            return (
+              <TreeRowView
+                key={id}
+                row={row}
+                focused={focused}
+                expanded={expanded === id}
+                agentRunning={agentState?.runningArtifactId === id}
+              />
+            );
+          }
           return (
-            <TreeRowView
-              key={id}
+            <ActionRowView
+              key={`action-${row.actionIndex}-${row.action.command}`}
               row={row}
               focused={focused}
-              expanded={expanded === id}
-              agentRunning={agentState?.runningArtifactId === id}
             />
           );
-        }
-        return (
-          <ActionRowView
-            key={`action-${row.actionIndex}-${row.action.command}`}
-            row={row}
-            focused={focused}
-          />
-        );
-      })}
+        })}
 
-      {belowCount > 0 && <Text dimColor>{`  ↓ ${belowCount} more`}</Text>}
+        {belowCount > 0 && <Text dimColor>{`  ↓ ${belowCount} more`}</Text>}
+      </Box>
 
       {agentState !== null && <DockedStrip state={agentState} />}
 
-      <Box marginTop={1}>
-        {phase === "running" ? (
-          <Text dimColor>[Ctrl-C] abort</Text>
-        ) : onActionRow ? (
-          <Text dimColor>{"↑↓ navigate  ↵ run  Esc back"}</Text>
-        ) : (
-          <Text dimColor>
-            {"↑↓ navigate  ↵ actions  ←▶/→▼ collapse/expand  Esc back  r refresh  q quit"}
-          </Text>
-        )}
-      </Box>
+      <Footer phase={phase} onActionRow={onActionRow} cursor={cursor + 1} total={rows.length} />
     </Box>
   );
 }

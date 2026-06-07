@@ -4,14 +4,19 @@ import {
   runAcceptHypothesis,
   runAcceptSolutionHypothesis,
   runAcceptFeature,
+  runAcceptQaPlan,
+  runAcceptRelease,
 } from "./accept-cmd.js";
 import { runDeliver } from "./deliver-cmd.js";
 import { runDiscover } from "./discover-cmd.js";
 import { runDevelop } from "./develop-cmd.js";
+import { runQa } from "./qa-cmd.js";
+import { runRelease } from "./release-cmd.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
 
 export function isExpensive(command: string): boolean {
-  return command.includes("deliver") || command.includes("discover");
+  const sub = command.replace(/^pet\s+/, "").split(/\s+/)[0];
+  return sub === "deliver" || sub === "discover" || sub === "qa" || sub === "release";
 }
 
 export async function dispatchReplCommand(
@@ -29,6 +34,8 @@ export async function dispatchReplCommand(
     if (kind === "hypothesis") return runAcceptHypothesis(id, { yes: true });
     if (kind === "solution-hypothesis") return runAcceptSolutionHypothesis(id, { yes: true });
     if (kind === "feature") return runAcceptFeature(id, { yes: true });
+    if (kind === "qa-plan") return runAcceptQaPlan(id, { yes: true });
+    if (kind === "release") return runAcceptRelease(id, { yes: true });
   }
 
   if (sub === "deliver") {
@@ -71,6 +78,28 @@ export async function dispatchReplCommand(
     if (!id) return 1;
     return runDevelop({
       task: id,
+      noInk: true,
+      ...(callbacks !== undefined ? { callbacks } : {}),
+    });
+  }
+
+  if (sub === "qa") {
+    const featureFlag = args.indexOf("--feature");
+    const id = featureFlag >= 0 ? args[featureFlag + 1] : undefined;
+    if (!id) return 1;
+    return runQa({
+      feature: id,
+      noInk: true,
+      ...(callbacks !== undefined ? { callbacks } : {}),
+    });
+  }
+
+  if (sub === "release") {
+    const releaseFlag = args.indexOf("--release");
+    const id = releaseFlag >= 0 ? args[releaseFlag + 1] : undefined;
+    if (!id) return 1;
+    return runRelease({
+      release: id,
       noInk: true,
       ...(callbacks !== undefined ? { callbacks } : {}),
     });

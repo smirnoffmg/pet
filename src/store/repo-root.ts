@@ -28,3 +28,15 @@ export function findRepoRoot(startDir: string = process.cwd()): string {
 export function docRoot(repoRoot: string): string {
   return path.join(repoRoot, "doc");
 }
+
+export function readGitBranch(repoRoot: string): string {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "(no branch)";
+  }
+}
