@@ -6,6 +6,7 @@ import { scanArtifacts } from "@/store/scan.js";
 import { docRoot, findRepoRoot } from "@/store/repo-root.js";
 import { ADR_DIR } from "@/store/paths.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
+import { printDiscernmentChecklist } from "./discernment.js";
 import type { HypothesisFrontmatter } from "@/schemas/hypothesis.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
@@ -49,6 +50,7 @@ export async function runAcceptHypothesis(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("hypothesis", hypothesisId);
     const ok = await confirm({
       message: `Accept hypothesis ${hypothesisId}? This is a human-in-the-loop decision.`,
       default: false,
@@ -111,6 +113,7 @@ export async function runAcceptSolutionHypothesis(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("solution_hypothesis", solutionHypothesisId);
     const ok = await confirm({
       message: `Accept solution hypothesis ${solutionHypothesisId}? This is a human-in-the-loop decision.`,
       default: false,
@@ -173,6 +176,7 @@ export async function runAcceptFeature(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("feature", featureId);
     const ok = await confirm({
       message: `Accept feature ${featureId}? This is a human-in-the-loop decision.`,
       default: false,
@@ -242,6 +246,7 @@ export async function runAcceptAdr(adrArg: string, opts: { yes?: boolean } = {})
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("adr", `ADR-${padded}`);
     const ok = await confirm({
       message: `Accept ADR ${n}? This is a human-in-the-loop decision.`,
       default: false,
@@ -291,6 +296,7 @@ export async function runAcceptMetric(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("metric", metricId);
     const ok = await confirm({
       message: `Accept metric ${metricId}? This is a human-in-the-loop decision.`,
       default: false,
@@ -349,6 +355,7 @@ export async function runAcceptQaPlan(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("qa_plan", qaPlanId);
     const ok = await confirm({
       message: `Accept QA plan ${qaPlanId}? This is a human-in-the-loop decision.`,
       default: false,
@@ -409,6 +416,7 @@ export async function runAcceptRelease(
   }
 
   if (!opts.yes) {
+    printDiscernmentChecklist("release", releaseId);
     const ok = await confirm({
       message: `Accept release ${releaseId}? This is a human-in-the-loop decision.`,
       default: false,

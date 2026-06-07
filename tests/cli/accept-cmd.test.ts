@@ -46,16 +46,20 @@ function statusOf(filePath: string): string {
 describe("runAccept* --yes flag", () => {
   let originalCwd: string;
   let fixture: Fixture;
+  const spyStdout = () => vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  let stdoutSpy: ReturnType<typeof spyStdout>;
 
   beforeEach(() => {
     originalCwd = process.cwd();
     fixture = createFixture();
     confirmMock.mockReset();
+    stdoutSpy = spyStdout();
     process.chdir(fixture.root);
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
+    stdoutSpy.mockRestore();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   });
 
@@ -76,6 +80,7 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(0);
       expect(confirmMock).not.toHaveBeenCalled();
+      expect(stdoutSpy).not.toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
       expect(statusOf(file)).toBe("accepted");
     });
 
@@ -91,6 +96,8 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(1);
       expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("PROB-0001"));
       expect(statusOf(file)).toBe("proposed");
     });
 
@@ -111,6 +118,8 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(0);
       expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("PROB-0001"));
       expect(statusOf(file)).toBe("accepted");
     });
   });
@@ -137,6 +146,7 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(0);
       expect(confirmMock).not.toHaveBeenCalled();
+      expect(stdoutSpy).not.toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
       expect(statusOf(file)).toBe("accepted");
     });
 
@@ -162,6 +172,8 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(1);
       expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("SOL-0001"));
       expect(statusOf(file)).toBe("proposed");
     });
   });
@@ -193,6 +205,7 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(0);
       expect(confirmMock).not.toHaveBeenCalled();
+      expect(stdoutSpy).not.toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
       expect(statusOf(file)).toBe("accepted");
     });
 
@@ -223,6 +236,8 @@ describe("runAccept* --yes flag", () => {
 
       expect(code).toBe(1);
       expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("Discernment checklist"));
+      expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining("FEAT-0001"));
       expect(statusOf(file)).toBe("proposed");
     });
   });

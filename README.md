@@ -18,6 +18,8 @@ Three ideas carry the whole system:
 
 **Agents don't carry state.** Each agent invocation reads the current artifacts, computes what should happen next, and takes one step. Same pattern as a Kubernetes controller: read desired state, emit commands to converge. No daemon, no long-running process, no "where are we in the pipeline?" to answer.
 
+`pet` is designed around the [AI Fluency Framework's 4Ds](https://aifluencyframework.org/): **Delegation** (the orchestrator decides which agent acts next), **Description** (artifact bodies are the briefs agents receive), **Discernment** (`pet accept` surfaces a checklist before every HITL gate), and **Diligence** (immutability rules and the audit log keep the full history of what was decided and why).
+
 ## Artifact types
 
 Every artifact is a markdown file with YAML frontmatter. The ID prefix tells you what kind it is; the status tells you where it is in its lifecycle.
