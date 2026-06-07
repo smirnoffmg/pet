@@ -82,7 +82,7 @@ export async function runNew(
       const fm: HypothesisFrontmatter = {
         id: problemHypothesisIdSchema.parse(id),
         status: "proposed",
-        target_metric_ids: [],
+        target_metric_ids: options.metric ? [metricIdSchema.parse(options.metric)] : [],
       };
       const result = writeArtifact(root, kind, fm, title);
       if (result.isErr()) {

@@ -1,4 +1,27 @@
-# pet Quickstart
+# Quickstart
+
+- [Quickstart](#quickstart)
+  - [Prerequisites](#prerequisites)
+  - [Install](#install)
+  - [Configure](#configure)
+    - [Choosing a provider](#choosing-a-provider)
+    - [Mock mode (no API key needed)](#mock-mode-no-api-key-needed)
+    - [Verbose output](#verbose-output)
+    - [MCP tool servers (optional)](#mcp-tool-servers-optional)
+  - [Starting on an existing project](#starting-on-an-existing-project)
+  - [Starting on a new project](#starting-on-a-new-project)
+    - [1. Create a target metric](#1-create-a-target-metric)
+    - [2. Pose a problem hypothesis](#2-pose-a-problem-hypothesis)
+    - [3. Run discovery (Researcher fills Evidence)](#3-run-discovery-researcher-fills-evidence)
+    - [4. Design a solution](#4-design-a-solution)
+    - [5. Design a feature](#5-design-a-feature)
+    - [6. Deliver (Architect + TechLead)](#6-deliver-architect--techlead)
+    - [7. Develop tasks](#7-develop-tasks)
+    - [8. QA and release](#8-qa-and-release)
+  - [Conversational interface](#conversational-interface)
+  - [Useful commands](#useful-commands)
+  - [Validate before committing](#validate-before-committing)
+  - [Key rules to remember](#key-rules-to-remember)
 
 Get from zero to a running pipeline in about 10 minutes.
 
@@ -95,7 +118,22 @@ Run `pet validate` after editing `pet.mcp.json` — it checks schema and duplica
 
 ---
 
-## Your first pipeline
+## Starting on an existing project
+
+Your repo already has code and history. `pet init` reads it and writes a context summary that agents use as background on every invocation.
+
+```bash
+cd your-project
+pet init
+# Scans git history, README, and file structure
+# → writes doc/product/context/project.md
+```
+
+Review the generated file and edit anything that's wrong or missing — agents will trust it. Then continue with the normal pipeline below, starting at step 1.
+
+---
+
+## Starting on a new project
 
 This walks through a complete discovery → delivery cycle from scratch.
 
@@ -116,9 +154,11 @@ pet accept metric MET-0001
 
 ### 2. Pose a problem hypothesis
 
+The `--metric` flag links the hypothesis to MET-0001 at creation, satisfying the FK required for acceptance.
+
 ```bash
 pet new hypothesis --metric MET-0001 "Teams lose strategic context during PM-to-Jira handoff"
-# → PROB-0001 created
+# → PROB-0001 created with target_metric_ids: [MET-0001]
 ```
 
 ### 3. Run discovery (Researcher fills Evidence)
@@ -135,6 +175,8 @@ pet accept hypothesis PROB-0001
 ```
 
 ### 4. Design a solution
+
+Same command as step 3 — but now PROB-0001 is `accepted`, so DiscoveryLead spawns SolutionDesigner instead of Researcher.
 
 ```bash
 pet discover --hypothesis PROB-0001 --yes

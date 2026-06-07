@@ -69,6 +69,7 @@ export async function runAcceptHypothesis(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
@@ -132,6 +133,7 @@ export async function runAcceptSolutionHypothesis(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
@@ -195,6 +197,7 @@ export async function runAcceptFeature(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
@@ -315,6 +318,7 @@ export async function runAcceptMetric(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
@@ -374,6 +378,7 @@ export async function runAcceptQaPlan(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
@@ -435,6 +440,7 @@ export async function runAcceptRelease(
 
   const validation = validateRepo(root, repoRoot);
   if (validation.isErr()) {
+    fs.writeFileSync(artifact.filePath, raw, "utf8");
     console.error(formatReport(validation.error));
     return 1;
   }
