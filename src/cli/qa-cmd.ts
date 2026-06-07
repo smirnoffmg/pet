@@ -1,6 +1,7 @@
 import { reconcileQa, explainQaIdle } from "@/controllers/qa-lead.js";
 import { loadSnapshot, getFeature } from "@/controllers/snapshot.js";
 import { executeCommands, formatCommand } from "@/agents/executor.js";
+import { renderAgentPanel } from "@/cli/render-agent-panel.js";
 import { estimatePlanCostUsd, confirmCostIfNeeded } from "@/agents/cost.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
 import { docRoot, findRepoRoot } from "@/store/repo-root.js";
@@ -15,6 +16,7 @@ export type QaOptions = {
   dryRun?: boolean;
   yes?: boolean;
   verbose?: boolean;
+  noInk?: boolean;
 };
 
 export async function runQa(options: QaOptions): Promise<number> {
@@ -95,20 +97,32 @@ export async function runQa(options: QaOptions): Promise<number> {
     logger.info(`Live agents — provider ${resolveProvider()}, model ${resolveModelId()}`);
   }
 
-  try {
-    await executeCommands(root, commands, false, logger);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error(message);
-    return 1;
+  if (options.noInk) {
+    try {
+      await executeCommands(root, commands, false, logger);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(message);
+      return 1;
+    }
+    const validation = validateRepo(root, repoRoot);
+    if (validation.isErr()) {
+      console.error(formatReport(validation.error));
+      return 1;
+    }
+    console.log("QA plan created. Validation passed.");
+    return 0;
   }
 
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    console.error(formatReport(validation.error));
-    return 1;
-  }
-
-  console.log("QA plan created. Validation passed.");
-  return 0;
+  return renderAgentPanel({
+    heading: `pet qa — ${options.feature}`,
+    runFn: async (callbacks) => {
+      await executeCommands(root, commands, false, logger, callbacks);
+      const validation = validateRepo(root, repoRoot);
+      if (validation.isErr()) {
+        throw new Error(formatReport(validation.error));
+      }
+      return 0;
+    },
+  });
 }

@@ -16,6 +16,7 @@ import {
   runMockDevOps,
 } from "./mock-runner.js";
 import { runLiveAgent } from "./run-agent.js";
+import type { ToolCallEvent } from "./run-agent.js";
 import type { AgentRole } from "./path-permissions.js";
 
 const KIND_TO_ROLE: Record<string, AgentRole> = {
@@ -60,11 +61,17 @@ export function formatCommand(cmd: SubagentCommand): string {
   }
 }
 
+export type ExecuteCallbacks = {
+  onAgentStart?: (role: string) => void;
+  onToolCall?: (e: ToolCallEvent) => void;
+};
+
 export async function executeCommands(
   docRoot: string,
   commands: SubagentCommand[],
   dryRun: boolean,
   logger: PdtLogger,
+  callbacks?: ExecuteCallbacks,
 ): Promise<void> {
   if (dryRun) {
     return;
@@ -83,7 +90,8 @@ export async function executeCommands(
       if (!role) {
         throw new Error(`Unknown command kind: ${cmd.kind}`);
       }
-      await runLiveAgent(role, docRoot, cmd.brief, logger, cmd.kind);
+      callbacks?.onAgentStart?.(role);
+      await runLiveAgent(role, docRoot, cmd.brief, logger, cmd.kind, callbacks?.onToolCall);
     }
 
     const changes = diffDocSnapshot(before, captureDocSnapshot(docRoot));

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`pet` (Product Development Toolkit) is a CLI tool that enables small teams or solo engineers to run an opinionated, agent-assisted product development cycle. It models all product work (hypotheses, features, tasks, metrics, releases, ADRs) as version-controlled markdown files with YAML frontmatter, and uses stateless LLM reconciler agents to drive discovery and delivery workflows. The primary users are engineers and small product teams who want to keep strategic context in their git repo rather than external tools.
+`pet` (Product Engineering Toolkit) is a CLI tool that enables small teams or solo engineers to run an opinionated, agent-assisted product development cycle. It models all product work (hypotheses, features, tasks, metrics, releases, ADRs) as version-controlled markdown files with YAML frontmatter, and uses stateless LLM reconciler agents to drive discovery and delivery workflows. The primary users are engineers and small product teams who want to keep strategic context in their git repo rather than external tools.
 
 ## Tech Stack
 

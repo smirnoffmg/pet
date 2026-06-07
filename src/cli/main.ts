@@ -1,35 +1,36 @@
 #!/usr/bin/env node
+import { runChatSession } from "@/chat/session.js";
+import type { ArtifactKind } from "@/schemas/ids.js";
+import { findRepoRoot } from "@/store/repo-root.js";
 import { Command } from "commander";
-import { runValidate } from "./validate-cmd.js";
-import { runNew, runNewAdr } from "./new-cmd.js";
-import { runDeliver } from "./deliver-cmd.js";
-import { runDiscover } from "./discover-cmd.js";
-import { runOrchestrate } from "./orchestrate-cmd.js";
-import { runDevelop } from "./develop-cmd.js";
-import { runQa } from "./qa-cmd.js";
-import { runRelease } from "./release-cmd.js";
 import {
-  runAcceptHypothesis,
-  runAcceptSolutionHypothesis,
-  runAcceptFeature,
   runAcceptAdr,
+  runAcceptFeature,
+  runAcceptHypothesis,
   runAcceptMetric,
   runAcceptQaPlan,
   runAcceptRelease,
+  runAcceptSolutionHypothesis,
 } from "./accept-cmd.js";
 import { runClean } from "./clean-cmd.js";
-import { runLogs } from "./logs-cmd.js";
-import { runList } from "./list-cmd.js";
-import { runNext } from "./next-cmd.js";
-import { runRepl } from "./repl-cmd.js";
-import { runChatSession } from "@/chat/session.js";
+import { runDeliver } from "./deliver-cmd.js";
+import { runDevelop } from "./develop-cmd.js";
+import { runDiscover } from "./discover-cmd.js";
 import { runInit } from "./init-cmd.js";
-import { findRepoRoot } from "@/store/repo-root.js";
-import type { ArtifactKind } from "@/schemas/ids.js";
+import { runList } from "./list-cmd.js";
+import { runLogs } from "./logs-cmd.js";
+import { runNew, runNewAdr } from "./new-cmd.js";
+import { runNext } from "./next-cmd.js";
+import { runOrchestrate } from "./orchestrate-cmd.js";
+import { runQa } from "./qa-cmd.js";
+import { runRelease } from "./release-cmd.js";
+import { runRepl } from "./repl-cmd.js";
+import { runTree } from "./tree-cmd.js";
+import { runValidate } from "./validate-cmd.js";
 
 const program = new Command();
 
-program.name("pet").description("Product Development Toolkit").version("0.0.0");
+program.name("pet").description("Product Engineering Toolkit").version("0.0.0");
 
 program
   .command("validate")
@@ -338,10 +339,14 @@ program
   });
 
 program
-  .command("chat", { isDefault: true })
+  .command("chat")
   .description("Start an interactive session to create artifacts and run controllers")
   .action(async () => {
     await runChatSession({ repoRoot: findRepoRoot() });
   });
+
+program.action(async () => {
+  process.exit(await runTree());
+});
 
 program.parse();

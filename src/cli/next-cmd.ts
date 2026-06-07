@@ -55,7 +55,14 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
     actions.push({ command: `pet accept hypothesis ${fm(a).id}`, reason: title(a) });
   }
 
-  // Priority 5: accepted features that need delivery (scaffold body or no tasks)
+  // Priority 5: todo/in_progress tasks that need dev enrichment
+  for (const a of byKind("task")
+    .filter((t) => fm(t).status === "todo" || fm(t).status === "in_progress")
+    .sort(byId)) {
+    actions.push({ command: `pet develop --task ${fm(a).id}`, reason: title(a) });
+  }
+
+  // Priority 6: accepted features that need delivery (scaffold body or no tasks)
   const taskFeatureIds = new Set(
     byKind("task").map((t) => (t.frontmatter as DevTaskFrontmatter).feature_id as string),
   );
@@ -66,15 +73,15 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
     }
   }
 
-  // Priority 6: accepted SOL- with no accepted features
-  const acceptedFeatSolIds = new Set(
+  // Priority 7: accepted SOL- with no proposed or accepted features
+  const coveredSolIds = new Set(
     byKind("feature")
-      .filter(accepted)
+      .filter((a) => fm(a).status === "proposed" || fm(a).status === "accepted")
       .map((f) => (f.frontmatter as FeatureFrontmatter).solution_hypothesis_id as string)
       .filter(Boolean),
   );
   for (const a of byKind("solution_hypothesis").filter(accepted).sort(byId)) {
-    if (!acceptedFeatSolIds.has(fm(a).id)) {
+    if (!coveredSolIds.has(fm(a).id)) {
       actions.push({
         command: `pet discover --solution-hypothesis ${fm(a).id}`,
         reason: title(a),
@@ -82,7 +89,7 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
     }
   }
 
-  // Priority 7: accepted PROB- with no SOL-
+  // Priority 8: accepted PROB- with no SOL-
   const hypIdsWithSol = new Set(
     byKind("solution_hypothesis")
       .filter((a) => fm(a).status !== "superseded")
@@ -99,6 +106,13 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
 
 function byId(a: ParsedArtifact, b: ParsedArtifact): number {
   return a.frontmatter.id.localeCompare(b.frontmatter.id);
+}
+
+export function computeArtifactActions(
+  artifactId: string,
+  allArtifacts: ParsedArtifact[],
+): Action[] {
+  return computeActions(allArtifacts).filter((a) => a.command.includes(artifactId));
 }
 
 export function runNext(): number {

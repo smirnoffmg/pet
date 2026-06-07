@@ -146,6 +146,7 @@ dist
 # Agents
 .claude/
 .cursor/
+.superpowers/
 CLAUDE.md
 AGENTS.md
 

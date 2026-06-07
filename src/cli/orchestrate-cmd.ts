@@ -9,12 +9,14 @@ import { loadConfig, sessionDir } from "@/config.js";
 import { resolveModelId, resolveProvider } from "@/llm/provider-factory.js";
 import { computeRepoHash } from "@/store/repo-hash.js";
 import { createLogger, ensureSessionLogPath, isVerboseEnv } from "@/log.js";
+import { renderAgentPanel } from "@/cli/render-agent-panel.js";
 import fs from "node:fs";
 
 export type OrchestrateOptions = {
   dryRun?: boolean;
   yes?: boolean;
   verbose?: boolean;
+  noInk?: boolean;
 };
 
 export async function runOrchestrate(options: OrchestrateOptions): Promise<number> {
@@ -82,22 +84,35 @@ export async function runOrchestrate(options: OrchestrateOptions): Promise<numbe
   }
   logger.outcome(`Planned API work: ${formatCommand(cmd)}`);
 
-  try {
-    await executeCommands(root, [cmd], false, logger);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error(message);
-    return 1;
+  if (options.noInk) {
+    try {
+      await executeCommands(root, [cmd], false, logger);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(message);
+      return 1;
+    }
+    appendOrchestrationDecision(root, `orchestrate: ${formatCommand(cmd)}`);
+    const validation = validateRepo(root, repoRoot);
+    if (validation.isErr()) {
+      console.error(formatReport(validation.error));
+      return 1;
+    }
+    console.log("Orchestration step completed. Validation passed.");
+    return 0;
   }
 
-  appendOrchestrationDecision(root, `orchestrate: ${formatCommand(cmd)}`);
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    console.error(formatReport(validation.error));
-    return 1;
-  }
-
-  console.log("Orchestration step completed. Validation passed.");
-  return 0;
+  const heading = `pet orchestrate — ${formatCommand(cmd).slice(0, 30)}`;
+  return renderAgentPanel({
+    heading,
+    runFn: async (callbacks) => {
+      await executeCommands(root, [cmd], false, logger, callbacks);
+      appendOrchestrationDecision(root, `orchestrate: ${formatCommand(cmd)}`);
+      const validation = validateRepo(root, repoRoot);
+      if (validation.isErr()) {
+        throw new Error(formatReport(validation.error));
+      }
+      return 0;
+    },
+  });
 }

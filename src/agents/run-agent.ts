@@ -8,6 +8,7 @@ import { createLogger } from "@/log.js";
 import { loadPrompt, type PromptRole } from "./load-prompt.js";
 import { permissionsForRole, type AgentRole } from "./path-permissions.js";
 import { estimateUsdFromTokens, extractTokenUsage } from "./usage.js";
+import { recordUsage } from "./session-stats.js";
 import type { SubagentCommand } from "./types.js";
 import type {
   AnalystBrief,
@@ -34,12 +35,15 @@ export type AgentBrief =
   | QaBrief
   | DevOpsBrief;
 
+export type ToolCallEvent = { name: string; path: string };
+
 export async function runLiveAgent(
   role: AgentRole,
   docRoot: string,
   brief: AgentBrief,
   logger: PdtLogger = createLogger({ verbose: loadConfig().verbose }),
   commandKind?: SubagentCommand["kind"],
+  onToolCall?: (event: ToolCallEvent) => void,
 ): Promise<unknown> {
   const promptRole = promptRoleFor(commandKind, role);
   logger.info(
@@ -66,10 +70,27 @@ export async function runLiveAgent(
 
   let result: unknown;
   const started = Date.now();
+  const userMessage = formatMessage(role, brief, commandKind);
   try {
-    result = await agent.invoke({
-      messages: [{ role: "user", content: formatMessage(role, brief, commandKind) }],
-    });
+    if (onToolCall) {
+      const run = await agent.streamEvents(
+        { messages: [{ role: "user", content: userMessage }] },
+        { version: "v3" },
+      );
+      const toolCallsTask = (async () => {
+        for await (const call of run.toolCalls) {
+          const raw = (call.input ?? {}) as Record<string, unknown>;
+          const path = String(raw["path"] ?? raw["file"] ?? raw["pattern"] ?? "").slice(0, 40);
+          onToolCall({ name: call.name, path });
+        }
+      })();
+      const [output] = await Promise.all([run.output, toolCallsTask]);
+      result = output;
+    } else {
+      result = await agent.invoke({
+        messages: [{ role: "user", content: userMessage }],
+      });
+    }
   } finally {
     await disconnect();
   }
@@ -79,6 +100,7 @@ export async function runLiveAgent(
 
   const usage = extractTokenUsage(result);
   if (usage) {
+    recordUsage(usage);
     const usd = estimateUsdFromTokens(usage);
     logger.outcome(
       `Claude usage: ${usage.inputTokens} input + ${usage.outputTokens} output tokens (~$${usd.toFixed(3)} at Sonnet list rates)`,

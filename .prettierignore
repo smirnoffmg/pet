@@ -1,5 +1,6 @@
 dist
 node_modules
+.superpowers
 
 # Accepted decision artifact — body must match git (immutability); do not auto-format.
 doc/product/features/0004-live-deliver-e2e-verification.md
