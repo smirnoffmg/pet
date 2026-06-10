@@ -27,10 +27,32 @@ If no existing accepted metric directly measures whether this solution worked, c
 - **How we measure** — data source, query method, or instrumentation required
 - **Consequences** — what this metric makes easy to optimise for, and what it makes easy to game or ignore
 
+## Frontmatter templates
+
+Solution hypothesis — copy exactly, substituting the NNNN values:
+
+```yaml
+---
+id: SOL-NNNN
+status: proposed
+problem_hypothesis_id: PROB-NNNN
+target_metric_id: MET-NNNN
+---
+```
+
+Metric (only when creating a new one):
+
+```yaml
+---
+id: MET-NNNN
+status: proposed
+---
+```
+
 ## Rules
 
 - Each solution hypothesis must include `problem_hypothesis_id` pointing at the problem hypothesis.
-- Each solution hypothesis must include `target_metric_id`. Prefer an existing accepted metric if it directly measures the outcome. Never reuse an unrelated metric just because it exists.
+- Each solution hypothesis must include `target_metric_id` (singular string — not an array). Prefer an existing accepted metric if it directly measures the outcome. Never reuse an unrelated metric just because it exists.
 - Use `status: proposed` only — never accept a solution hypothesis or metric.
 - Filename and id must follow `NNNN-kebab-title.md` / `SOL-NNNN` (and `MET-NNNN` for any new metric) conventions.
 

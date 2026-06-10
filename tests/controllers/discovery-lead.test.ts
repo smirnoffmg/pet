@@ -233,7 +233,7 @@ describe("reconcileDiscovery", () => {
     }
   });
 
-  it("errors when solution hypothesis is proposed (not accepted)", () => {
+  it("is idle (not error) when solution hypothesis is proposed — no filler agent yet", () => {
     const sh = solutionHypothesis("SOL-0001", "PROB-0001", "proposed");
     const snapshot = snap({
       solutionHypotheses: [sh],
@@ -243,7 +243,8 @@ describe("reconcileDiscovery", () => {
       type: "solution_hypothesis",
       solutionHypothesisId: "SOL-0001",
     });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.commands).toHaveLength(0);
   });
 
   it("spawns Designer enrich for scaffold feature with solution_hypothesis_id", () => {

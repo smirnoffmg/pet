@@ -60,6 +60,9 @@ export function explainDiscoveryIdle(snapshot: ArtifactSnapshot, target: Discove
         return `Solution hypothesis ${target.solutionHypothesisId} is accepted and already has feature(s): ${featureIds}. Run \`pet accept feature <id>\`, then \`pet deliver --feature <id>\`.`;
       }
     }
+    if (fm.status === "proposed") {
+      return `Solution hypothesis ${target.solutionHypothesisId} is proposed — fill any empty sections manually, then run \`pet accept solution-hypothesis ${target.solutionHypothesisId}\`.`;
+    }
     return `No discovery step applies to ${target.solutionHypothesisId} (status: ${fm.status}).`;
   }
 
@@ -238,11 +241,17 @@ function reconcileForSolutionHypothesis(
 
   const fm = sh.frontmatter as SolutionHypothesisFrontmatter;
 
-  if (fm.status !== "accepted") {
+  if (fm.status !== "accepted" && fm.status !== "proposed") {
     return {
       ok: false,
-      reason: `Solution hypothesis ${solutionHypothesisId} must be accepted before discovery (status: ${fm.status}). Run \`pet accept solution-hypothesis ${solutionHypothesisId}\`.`,
+      reason: `Solution hypothesis ${solutionHypothesisId} cannot be re-discovered (status: ${fm.status}).`,
     };
+  }
+
+  // Proposed SOL- with empty sections: return idle — no filler agent exists yet.
+  // The human should fill remaining sections and accept before FeatureDesigner runs.
+  if (fm.status === "proposed") {
+    return { ok: true, commands: [] };
   }
 
   if (hasProposedOrAcceptedFeatureForSolutionHypothesis(snapshot.features, solutionHypothesisId)) {

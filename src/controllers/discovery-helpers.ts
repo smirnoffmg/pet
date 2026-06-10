@@ -60,6 +60,16 @@ export function featureBodyIsScaffold(body: string): boolean {
   return withoutSectionHeaders.trim().length === 0;
 }
 
+/** True when at least one ## section in the body has no content (empty or only whitespace). */
+export function anySectionEmpty(body: string): boolean {
+  const parts = body.split(/^(?=## )/m);
+  return parts.some((part) => {
+    if (!part.startsWith("## ")) return false;
+    const content = part.replace(/^## [^\n]+\n/, "").trim();
+    return content.length === 0;
+  });
+}
+
 export function asMetricFm(artifact: ParsedArtifact): TargetMetricFrontmatter {
   return artifact.frontmatter as TargetMetricFrontmatter;
 }

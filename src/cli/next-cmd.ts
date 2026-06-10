@@ -5,7 +5,7 @@ import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesi
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
 import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
-import { featureBodyIsScaffold } from "@/controllers/discovery-helpers.js";
+import { featureBodyIsScaffold, anySectionEmpty } from "@/controllers/discovery-helpers.js";
 
 export type Action = { command: string; reason: string };
 
@@ -51,9 +51,13 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
     actions.push({ command: `pet accept feature ${fm(a).id}`, reason: title(a) });
   }
 
-  // Priority 4: proposed hypotheses
+  // Priority 4: proposed hypotheses — discover if any section is still empty, accept if all filled
   for (const a of byKind("hypothesis").filter(proposed).sort(byId)) {
-    actions.push({ command: `pet accept hypothesis ${fm(a).id}`, reason: title(a) });
+    if (anySectionEmpty(a.body)) {
+      actions.push({ command: `pet discover --hypothesis ${fm(a).id}`, reason: title(a) });
+    } else {
+      actions.push({ command: `pet accept hypothesis ${fm(a).id}`, reason: title(a) });
+    }
   }
 
   // Priority 5: todo/in_progress tasks that need dev enrichment
@@ -153,7 +157,135 @@ export function computeArtifactActions(
   artifactId: string,
   allArtifacts: ParsedArtifact[],
 ): Action[] {
-  return computeActions(allArtifacts).filter((a) => a.command.includes(artifactId));
+  const artifact = allArtifacts.find((a) => fm(a).id === artifactId);
+  if (!artifact) return [];
+  return computeArtifactActionsFor(artifact, allArtifacts);
+}
+
+function computeArtifactActionsFor(
+  artifact: ParsedArtifact,
+  allArtifacts: ParsedArtifact[],
+): Action[] {
+  const { id, status } = fm(artifact);
+  const actions: Action[] = [];
+
+  switch (artifact.kind) {
+    case "hypothesis": {
+      if (status === "proposed") {
+        actions.push({
+          command: `pet discover --hypothesis ${id}`,
+          reason: anySectionEmpty(artifact.body) ? "fill empty sections" : "re-run research",
+        });
+        if (!anySectionEmpty(artifact.body)) {
+          actions.push({ command: `pet accept hypothesis ${id}`, reason: "lock and proceed" });
+        }
+      } else if (status === "accepted") {
+        const hasSol = allArtifacts.some(
+          (a) =>
+            a.kind === "solution_hypothesis" &&
+            (a.frontmatter as SolutionHypothesisFrontmatter).problem_hypothesis_id === id &&
+            fm(a).status !== "superseded",
+        );
+        if (!hasSol) {
+          actions.push({
+            command: `pet discover --hypothesis ${id}`,
+            reason: "generate solution hypothesis",
+          });
+        }
+      }
+      break;
+    }
+
+    case "solution_hypothesis": {
+      if (status === "proposed") {
+        actions.push({
+          command: `pet accept solution-hypothesis ${id}`,
+          reason: "lock and proceed",
+        });
+      } else if (status === "accepted") {
+        const hasFeature = allArtifacts.some(
+          (a) =>
+            a.kind === "feature" &&
+            (a.frontmatter as FeatureFrontmatter).solution_hypothesis_id === id &&
+            (fm(a).status === "proposed" || fm(a).status === "accepted"),
+        );
+        if (!hasFeature) {
+          actions.push({
+            command: `pet discover --solution-hypothesis ${id}`,
+            reason: "generate features",
+          });
+        }
+      }
+      break;
+    }
+
+    case "feature": {
+      if (status === "proposed") {
+        if (featureBodyIsScaffold(artifact.body)) {
+          actions.push({ command: `pet discover --feature ${id}`, reason: "fill feature body" });
+        } else {
+          actions.push({ command: `pet accept feature ${id}`, reason: "lock and proceed" });
+        }
+      } else if (status === "accepted") {
+        const tasks = allArtifacts.filter(
+          (a) => a.kind === "task" && (a.frontmatter as DevTaskFrontmatter).feature_id === id,
+        );
+        if (featureBodyIsScaffold(artifact.body) || tasks.length === 0) {
+          actions.push({ command: `pet deliver --feature ${id}`, reason: "generate tasks" });
+        } else {
+          const allDone = tasks.every((t) => fm(t).status === "done");
+          const hasQaPlan = allArtifacts.some(
+            (a) =>
+              a.kind === "qa_plan" &&
+              (a.frontmatter as QaPlanFrontmatter).feature_id === id &&
+              fm(a).status !== "superseded",
+          );
+          if (allDone && !hasQaPlan) {
+            actions.push({ command: `pet qa --feature ${id}`, reason: "generate QA plan" });
+          }
+        }
+      }
+      break;
+    }
+
+    case "task": {
+      if (status === "todo" || status === "in_progress") {
+        actions.push({ command: `pet develop --task ${id}`, reason: "enrich task" });
+      }
+      break;
+    }
+
+    case "metric": {
+      if (status === "proposed") {
+        actions.push({ command: `pet accept metric ${id}`, reason: "" });
+      }
+      break;
+    }
+
+    case "qa_plan": {
+      if (status === "proposed") {
+        actions.push({ command: `pet accept qa-plan ${id}`, reason: "" });
+      }
+      break;
+    }
+
+    case "release": {
+      if (status === "proposed") {
+        if (featureBodyIsScaffold(artifact.body)) {
+          actions.push({
+            command: `pet release --release ${id}`,
+            reason: "generate deployment checklist",
+          });
+        } else {
+          actions.push({ command: `pet release --release ${id}`, reason: "re-run release agent" });
+          actions.push({ command: `pet accept release ${id}`, reason: "lock and mark shipped" });
+        }
+      }
+      break;
+    }
+  }
+
+  return actions;
 }
 
 export function runNext(): number {
