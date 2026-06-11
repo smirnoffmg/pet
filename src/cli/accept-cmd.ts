@@ -14,6 +14,22 @@ import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
 import type { ReleaseFrontmatter } from "@/schemas/release.js";
 
+function atomicAccept(filePath: string, root: string, repoRoot: string): number {
+  const raw = fs.readFileSync(filePath, "utf8");
+  const parsed = matter(raw);
+  const data = parsed.data as Record<string, unknown>;
+  data["status"] = "accepted";
+  fs.writeFileSync(filePath, matter.stringify(parsed.content, data), "utf8");
+
+  const validation = validateRepo(root, repoRoot);
+  if (validation.isErr()) {
+    fs.writeFileSync(filePath, raw, "utf8");
+    console.error(formatReport(validation.error));
+    return 1;
+  }
+  return 0;
+}
+
 export async function runAcceptHypothesis(
   hypothesisId: string,
   opts: { yes?: boolean } = {},
@@ -61,18 +77,8 @@ export async function runAcceptHypothesis(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(`Accepted ${hypothesisId}. Run \`pet validate\` before commit.`);
   return 0;
@@ -125,18 +131,8 @@ export async function runAcceptSolutionHypothesis(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(
     `Accepted ${solutionHypothesisId}. Run \`pet discover --solution-hypothesis ${solutionHypothesisId}\` next.`,
@@ -189,18 +185,8 @@ export async function runAcceptFeature(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(`Accepted ${featureId}. Run \`pet deliver --feature ${featureId}\` next.`);
   return 0;
@@ -263,6 +249,13 @@ export async function runAcceptAdr(adrArg: string, opts: { yes?: boolean } = {})
   const updated = raw.replace(/^(## Status\s*\n+)\w+/m, "$1Accepted");
   fs.writeFileSync(filePath, updated, "utf8");
 
+  const validation = validateRepo(root, repoRoot);
+  if (validation.isErr()) {
+    fs.writeFileSync(filePath, raw, "utf8");
+    console.error(formatReport(validation.error));
+    return 1;
+  }
+
   console.log(`Accepted ADR ${n}.`);
   return 0;
 }
@@ -310,18 +303,8 @@ export async function runAcceptMetric(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(`Accepted ${metricId}.`);
   return 0;
@@ -370,18 +353,8 @@ export async function runAcceptQaPlan(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(`Accepted ${qaPlanId}.`);
   return 0;
@@ -432,18 +405,8 @@ export async function runAcceptRelease(
     }
   }
 
-  const raw = fs.readFileSync(artifact.filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(artifact.filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(artifact.filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
-    return 1;
-  }
+  const result = atomicAccept(artifact.filePath, root, repoRoot);
+  if (result !== 0) return result;
 
   console.log(`Accepted ${releaseId}.`);
   return 0;

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@langchain/ollama", () => ({
-  ChatOllama: vi.fn().mockImplementation((opts: unknown) => ({ _opts: opts })),
+  ChatOllama: vi.fn().mockImplementation(function (opts: unknown) {
+    return { _opts: opts };
+  }),
 }));
 
 import { ChatOllama } from "@langchain/ollama";

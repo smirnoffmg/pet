@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock before importing the module under test so the factory receives mocked constructors.
 vi.mock("@langchain/openai", () => ({
-  ChatOpenAI: vi.fn().mockImplementation((opts: unknown) => ({ _opts: opts })),
-  AzureChatOpenAI: vi.fn().mockImplementation((opts: unknown) => ({ _opts: opts })),
+  ChatOpenAI: vi.fn().mockImplementation(function (opts: unknown) {
+    return { _opts: opts };
+  }),
+  AzureChatOpenAI: vi.fn().mockImplementation(function (opts: unknown) {
+    return { _opts: opts };
+  }),
 }));
 
 import { ChatOpenAI } from "@langchain/openai";

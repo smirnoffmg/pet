@@ -19,7 +19,7 @@ import { runLiveAgent } from "./run-agent.js";
 import type { ToolCallEvent } from "./run-agent.js";
 import type { AgentRole } from "./path-permissions.js";
 
-const KIND_TO_ROLE: Record<string, AgentRole> = {
+const KIND_TO_ROLE: Record<SubagentCommand["kind"], AgentRole> = {
   spawn_architect: "architect",
   spawn_techlead: "techlead",
   spawn_analyst: "analyst",
@@ -87,9 +87,6 @@ export async function executeCommands(
       runMockCommand(docRoot, cmd);
     } else {
       const role = KIND_TO_ROLE[cmd.kind];
-      if (!role) {
-        throw new Error(`Unknown command kind: ${cmd.kind}`);
-      }
       callbacks?.onAgentStart?.(role);
       await runLiveAgent(role, docRoot, cmd.brief, logger, cmd.kind, callbacks?.onToolCall);
     }

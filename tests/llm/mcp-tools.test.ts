@@ -8,11 +8,9 @@ import * as pathPerms from "@/agents/path-permissions.js";
 vi.mock("@langchain/mcp-adapters", () => {
   const closeSpy = vi.fn().mockResolvedValue(undefined);
   const getToolsSpy = vi.fn().mockResolvedValue([{ name: "fake-tool" }]);
-  const constructorSpy = vi.fn().mockImplementation((config: unknown) => ({
-    _config: config,
-    getTools: getToolsSpy,
-    close: closeSpy,
-  }));
+  const constructorSpy = vi.fn().mockImplementation(function (config: unknown) {
+    return { _config: config, getTools: getToolsSpy, close: closeSpy };
+  });
   return { MultiServerMCPClient: constructorSpy };
 });
 

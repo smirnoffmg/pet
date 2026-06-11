@@ -9,7 +9,9 @@ const SERVER_BIN = path.resolve("node_modules/@modelcontextprotocol/server-memor
 // vi.mock factories are hoisted to the top — no outer variable references allowed inside.
 vi.mock("deepagents", () => ({
   createDeepAgent: vi.fn().mockReturnValue({ invoke: vi.fn().mockResolvedValue({ messages: [] }) }),
-  FilesystemBackend: vi.fn().mockImplementation(() => ({})),
+  FilesystemBackend: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
 vi.mock("@/llm/provider-factory.js", () => ({

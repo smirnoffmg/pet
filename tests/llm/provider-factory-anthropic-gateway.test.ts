@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@langchain/anthropic", () => ({
-  ChatAnthropic: vi.fn().mockImplementation((opts: unknown) => ({ _opts: opts })),
+  ChatAnthropic: vi.fn().mockImplementation(function (opts: unknown) {
+    return { _opts: opts };
+  }),
 }));
 
 import { ChatAnthropic } from "@langchain/anthropic";

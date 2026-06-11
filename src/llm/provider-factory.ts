@@ -4,6 +4,7 @@ import { ChatBedrockConverse } from "@langchain/aws";
 import { ChatVertexAI } from "@langchain/google-vertexai";
 import { ChatOllama } from "@langchain/ollama";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { ProviderConfigError } from "@/errors/index.js";
 
 const VALID_PROVIDERS = [
   "anthropic",
@@ -50,7 +51,7 @@ export async function createModel(): Promise<BaseChatModel> {
   const provider = resolveProvider();
 
   if (!VALID_PROVIDERS.includes(provider as Provider)) {
-    throw new Error(
+    throw new ProviderConfigError(
       `PET_LLM_PROVIDER="${provider}" is not supported. Valid options: ${VALID_PROVIDERS.join(", ")}`,
     );
   }
@@ -75,7 +76,7 @@ export async function createModel(): Promise<BaseChatModel> {
 
 function requireEnv(name: string, provider: string): string {
   const val = process.env[name];
-  if (!val) throw new Error(`${name} is required when PET_LLM_PROVIDER=${provider}`);
+  if (!val) throw new ProviderConfigError(`${name} is required when PET_LLM_PROVIDER=${provider}`);
   return val;
 }
 
@@ -118,16 +119,16 @@ function buildVertex(modelOverride: string | undefined): BaseChatModel {
 async function buildOllama(modelOverride: string | undefined): Promise<BaseChatModel> {
   const model = modelOverride;
   if (!model) {
-    throw new Error("PET_LLM_MODEL is required when PET_LLM_PROVIDER=ollama");
+    throw new ProviderConfigError("PET_LLM_MODEL is required when PET_LLM_PROVIDER=ollama");
   }
 
   const baseUrl = process.env["PET_LLM_BASE_URL"] ?? "http://localhost:11434";
 
   try {
     const res = await fetch(`${baseUrl}/api/tags`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new ProviderConfigError(`HTTP ${res.status}`);
   } catch (err) {
-    throw new Error(
+    throw new ProviderConfigError(
       `Ollama server unreachable at PET_LLM_BASE_URL=${baseUrl}. Start it with: ollama serve (${String(err)})`,
     );
   }
