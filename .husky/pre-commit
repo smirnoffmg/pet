@@ -1,3 +1,4 @@
+npm ls --depth=0
 npm run validate
 npm run typecheck
 npm run lint
