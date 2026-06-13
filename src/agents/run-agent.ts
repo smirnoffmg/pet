@@ -80,7 +80,9 @@ export async function runLiveAgent(
       const toolCallsTask = (async () => {
         for await (const call of run.toolCalls) {
           const raw = (call.input ?? {}) as Record<string, unknown>;
-          const path = String(raw["file_path"] ?? raw["path"] ?? raw["file"] ?? raw["pattern"] ?? "").slice(0, 40);
+          const path = String(
+            raw["file_path"] ?? raw["path"] ?? raw["file"] ?? raw["pattern"] ?? "",
+          ).slice(0, 40);
           onToolCall({ name: call.name, path });
         }
       })();
