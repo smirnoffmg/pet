@@ -8,6 +8,7 @@ import {
 } from "@/schemas/ids.js";
 import type { ArtifactSnapshot } from "@/agents/types.js";
 import type { ParsedArtifact } from "@/store/parse.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 
 const EMPTY_EVIDENCE_BODY = "# H\n\n## Evidence\n\n## Consequences\n";
 const FILLED_EVIDENCE_BODY = "# H\n\n## Evidence\n\nSome research here.\n\n## Consequences\n";
@@ -15,6 +16,20 @@ const SCAFFOLD_BODY =
   "# Feature\n\n## Context\n\n## Decision\n\n## Acceptance criteria\n\n## Consequences\n";
 const FILLED_BODY =
   "# Feature\n\n## Context\n\nFull context here.\n\n## Decision\n\nWe will build X.\n\n## Acceptance criteria\n\n- X works.\n\n## Consequences\n\nPositive.\n";
+
+function metric(id: string, hypothesisId: string): ParsedArtifact {
+  return {
+    kind: "metric",
+    filePath: `/doc/product/01-metrics/${id}.md`,
+    relativePath: `product/01-metrics/${id}.md`,
+    frontmatter: {
+      id: metricIdSchema.parse(id),
+      status: "accepted",
+      problem_hypothesis_id: problemHypothesisIdSchema.parse(hypothesisId),
+    } satisfies TargetMetricFrontmatter,
+    body: "# Metric\n",
+  };
+}
 
 function hyp(
   id: string,
@@ -25,14 +40,14 @@ function hyp(
     kind: "hypothesis",
     filePath: `/doc/product/00-problem-hypotheses/${id}.md`,
     relativePath: `product/00-problem-hypotheses/${id}.md`,
-    frontmatter: { id: problemHypothesisIdSchema.parse(id), status, target_metric_ids: [] },
+    frontmatter: { id: problemHypothesisIdSchema.parse(id), status },
     body,
   };
 }
 
 function sol(
   id: string,
-  hypId: string,
+  metId: string,
   status: "proposed" | "accepted" | "superseded",
 ): ParsedArtifact {
   return {
@@ -42,8 +57,7 @@ function sol(
     frontmatter: {
       id: solutionHypothesisIdSchema.parse(id),
       status,
-      problem_hypothesis_id: problemHypothesisIdSchema.parse(hypId),
-      target_metric_id: metricIdSchema.parse("MET-0001"),
+      metric_ids: [metricIdSchema.parse(metId)],
     },
     body: "# Solution\n",
   };
@@ -99,6 +113,16 @@ function snap(partial: Partial<ArtifactSnapshot>): ArtifactSnapshot {
     releases: [],
     qaPlansByFeatureId: new Map(),
     byReleaseId: new Map(),
+    metricsByHypothesisId: (() => {
+      const map = new Map<string, ParsedArtifact[]>();
+      for (const m of partial.metrics ?? []) {
+        const fm = m.frontmatter as TargetMetricFrontmatter;
+        const list = map.get(fm.problem_hypothesis_id) ?? [];
+        list.push(m);
+        map.set(fm.problem_hypothesis_id, list);
+      }
+      return map;
+    })(),
   };
 }
 
@@ -127,7 +151,8 @@ describe("reconcileOrchestrator", () => {
     const result = reconcileOrchestrator(
       snap({
         hypotheses: [hyp("PROB-0001", "accepted")],
-        solutionHypotheses: [sol("SOL-0001", "PROB-0001", "proposed")],
+        metrics: [metric("MET-0001", "PROB-0001")],
+        solutionHypotheses: [sol("SOL-0001", "MET-0001", "proposed")],
       }),
     );
     expect(result.ok).toBe(true);
@@ -138,7 +163,7 @@ describe("reconcileOrchestrator", () => {
     const result = reconcileOrchestrator(
       snap({
         hypotheses: [hyp("PROB-0001", "accepted")],
-        solutionHypotheses: [sol("SOL-0001", "PROB-0001", "accepted")],
+        solutionHypotheses: [sol("SOL-0001", "MET-0001", "accepted")],
       }),
     );
     expect(result.ok).toBe(true);

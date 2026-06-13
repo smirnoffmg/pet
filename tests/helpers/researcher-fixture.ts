@@ -60,8 +60,6 @@ function makeHypProposedContent(variantIndex?: number): string {
     "---",
     "id: PROB-0001",
     "status: proposed",
-    "target_metric_ids:",
-    "  - MET-0001",
     "---",
     "",
     `# Hypothesis: users need faster onboarding${titleSuffix}`,
@@ -117,8 +115,6 @@ function buildFixture(hypProposedContent: string): ResearcherFixtureContext {
       "---",
       "id: PROB-0002",
       "status: proposed",
-      "target_metric_ids:",
-      "  - MET-0001",
       "---",
       "",
       "# Hypothesis: tooltips reduce time-to-value",
@@ -153,8 +149,6 @@ function buildFixture(hypProposedContent: string): ResearcherFixtureContext {
       "---",
       "id: PROB-0003",
       "status: accepted",
-      "target_metric_ids:",
-      "  - MET-0001",
       "---",
       "",
       "# Hypothesis: caching improves response time",
@@ -169,8 +163,6 @@ function buildFixture(hypProposedContent: string): ResearcherFixtureContext {
       "---",
       "id: PROB-0004",
       "status: invalidated",
-      "target_metric_ids:",
-      "  - MET-0001",
       "---",
       "",
       "# Hypothesis: dark mode increases engagement",
@@ -186,8 +178,8 @@ function buildFixture(hypProposedContent: string): ResearcherFixtureContext {
       "---",
       "id: SOL-0001",
       "status: proposed",
-      "problem_hypothesis_id: PROB-0003",
-      "target_metric_id: MET-0001",
+      "metric_ids:",
+      "  - MET-0001",
       "---",
       "",
       "# Solution: optimise query caching layer",
@@ -225,10 +217,21 @@ function buildFixture(hypProposedContent: string): ResearcherFixtureContext {
     "utf8",
   );
 
-  // 7. Metric sentinel — detects cross-directory side-effects; also target_metric_id for SOL-0001
+  // 7. Metric sentinel — detects cross-directory side-effects; also in metric_ids for SOL-0001.
+  //    Points to PROB-0003 so that activeSolutionHypothesesForHypothesis returns SOL-0001 for
+  //    PROB-0003 (accepted), causing the T2 gate-abort. T1/T4 use proposed hypotheses which
+  //    always spawn Researcher regardless of metric linkage.
   fs.writeFileSync(
     path.join(root, "01-metrics", "0001-sentinel.md"),
-    ["---", "id: MET-0001", "status: proposed", "---", "", "# Sentinel metric"].join("\n"),
+    [
+      "---",
+      "id: MET-0001",
+      "status: proposed",
+      "problem_hypothesis_id: PROB-0003",
+      "---",
+      "",
+      "# Sentinel metric",
+    ].join("\n"),
     "utf8",
   );
 

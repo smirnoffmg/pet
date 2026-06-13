@@ -53,8 +53,9 @@ describe("computeActions — QA pipeline (priority 9-10)", () => {
   it("emits pet qa --feature when all tasks are done and no QA plan exists", () => {
     const arts = [
       makeArtifact("hypothesis", "PROB-0001", "accepted"),
+      makeArtifact("metric", "MET-0001", "accepted", { problem_hypothesis_id: "PROB-0001" }),
       makeArtifact("solution_hypothesis", "SOL-0001", "accepted", {
-        problem_hypothesis_id: "PROB-0001",
+        metric_ids: ["MET-0001"],
       }),
       acceptedFeature("FEAT-0001", "SOL-0001"),
       doneTask("TASK-0001", "FEAT-0001"),
@@ -164,8 +165,9 @@ describe("computeArtifactActions — per-artifact multi-action model", () => {
   it("accepted hypothesis with active SOL → no actions", () => {
     const cmds = computeArtifactActions("PROB-0001", [
       makeArtifact("hypothesis", "PROB-0001", "accepted"),
+      makeArtifact("metric", "MET-0001", "accepted", { problem_hypothesis_id: "PROB-0001" }),
       makeArtifact("solution_hypothesis", "SOL-0001", "proposed", {
-        problem_hypothesis_id: "PROB-0001",
+        metric_ids: ["MET-0001"],
       }),
     ]).map((a) => a.command);
     expect(cmds).toHaveLength(0);

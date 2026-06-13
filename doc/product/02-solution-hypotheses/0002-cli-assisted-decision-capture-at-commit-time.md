@@ -1,8 +1,8 @@
 ---
 id: SOL-0002
 status: accepted
-problem_hypothesis_id: PROB-0001
-target_metric_id: MET-0002
+metric_ids:
+  - MET-0002
 ---
 
 # CLI-assisted decision capture at commit time

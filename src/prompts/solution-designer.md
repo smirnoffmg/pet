@@ -29,14 +29,14 @@ If no existing accepted metric directly measures whether this solution worked, c
 
 ## Frontmatter templates
 
-Solution hypothesis — copy exactly, substituting the NNNN values:
+Solution hypothesis — copy exactly, substituting values:
 
 ```yaml
 ---
 id: SOL-NNNN
 status: proposed
-problem_hypothesis_id: PROB-NNNN
-target_metric_id: MET-NNNN
+metric_ids:
+  - MET-NNNN
 ---
 ```
 
@@ -46,13 +46,15 @@ Metric (only when creating a new one):
 ---
 id: MET-NNNN
 status: proposed
+problem_hypothesis_id: PROB-NNNN
 ---
 ```
 
 ## Rules
 
-- Each solution hypothesis must include `problem_hypothesis_id` pointing at the problem hypothesis.
-- Each solution hypothesis must include `target_metric_id` (singular string — not an array). Prefer an existing accepted metric if it directly measures the outcome. Never reuse an unrelated metric just because it exists.
+- Each solution hypothesis must include `metric_ids` (array of one or more MET- IDs). Prefer existing metrics that directly measure the outcome. Never reuse an unrelated metric just because it exists.
+- Each new metric must include `problem_hypothesis_id` pointing at the parent problem hypothesis.
+- A solution hypothesis does **not** carry a `problem_hypothesis_id` field — the link to the hypothesis is through the metrics.
 - Use `status: proposed` only — never accept a solution hypothesis or metric.
 - Filename and id must follow `NNNN-kebab-title.md` / `SOL-NNNN` (and `MET-NNNN` for any new metric) conventions.
 

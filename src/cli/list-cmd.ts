@@ -6,6 +6,7 @@ import { ADR_DIR } from "@/store/paths.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 import type { ArtifactKind } from "@/schemas/ids.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 
 const KIND_ALIASES: Record<string, ArtifactKind> = {
@@ -66,15 +67,23 @@ function printPipeline(artifacts: ParsedArtifact[]): void {
   const hyps = artifacts.filter((a) => a.kind === "hypothesis" && active(a)).sort(byId);
   const sols = artifacts.filter((a) => a.kind === "solution_hypothesis");
   const feats = artifacts.filter((a) => a.kind === "feature");
+  const metricById = new Map<string, ParsedArtifact>(
+    artifacts.filter((a) => a.kind === "metric").map((m) => [m.frontmatter.id as string, m]),
+  );
+  const hypothesisIdForSol = (sol: ParsedArtifact): string | undefined => {
+    const ids = (sol.frontmatter as SolutionHypothesisFrontmatter).metric_ids as string[];
+    for (const mid of ids) {
+      const met = metricById.get(mid);
+      if (met) return (met.frontmatter as TargetMetricFrontmatter).problem_hypothesis_id as string;
+    }
+    return undefined;
+  };
 
   for (const hyp of hyps) {
     row("", hyp);
 
     const hypSols = sols
-      .filter(
-        (s) =>
-          (s.frontmatter as SolutionHypothesisFrontmatter).problem_hypothesis_id === fm(hyp).id,
-      )
+      .filter((s) => hypothesisIdForSol(s) === fm(hyp).id)
       .filter(active)
       .sort(byId);
 

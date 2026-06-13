@@ -9,12 +9,16 @@ import type { ArtifactSnapshot } from "@/agents/types.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 import { metricIdSchema } from "@/schemas/ids.js";
 
-function metric(id: string, status: "proposed" | "accepted"): ParsedArtifact {
+function metric(id: string, hypothesisId: string, status: "proposed" | "accepted"): ParsedArtifact {
   return {
     kind: "metric",
     filePath: `/doc/product/01-metrics/${id}.md`,
     relativePath: `product/01-metrics/${id}.md`,
-    frontmatter: { id: metricIdSchema.parse(id), status },
+    frontmatter: {
+      id: metricIdSchema.parse(id),
+      status,
+      problem_hypothesis_id: problemHypothesisIdSchema.parse(hypothesisId),
+    },
     body: "# Metric\n",
   };
 }
@@ -31,7 +35,6 @@ function hypothesis(
     frontmatter: {
       id: problemHypothesisIdSchema.parse(id),
       status,
-      target_metric_ids: [],
     },
     body,
   };
@@ -39,7 +42,7 @@ function hypothesis(
 
 function solutionHypothesis(
   id: string,
-  problemProblemHypothesisId: string,
+  metricId: string,
   status: "proposed" | "accepted" | "superseded",
 ): ParsedArtifact {
   return {
@@ -49,16 +52,16 @@ function solutionHypothesis(
     frontmatter: {
       id: solutionHypothesisIdSchema.parse(id),
       status,
-      problem_hypothesis_id: problemHypothesisIdSchema.parse(problemProblemHypothesisId),
-      target_metric_id: metricIdSchema.parse("MET-0001"),
+      metric_ids: [metricIdSchema.parse(metricId)],
     },
     body: "# Solution\n",
   };
 }
 
 function snap(partial: Partial<ArtifactSnapshot>): ArtifactSnapshot {
+  const metrics = partial.metrics ?? [];
   return {
-    metrics: partial.metrics ?? [],
+    metrics,
     hypotheses: partial.hypotheses ?? [],
     solutionHypotheses: partial.solutionHypotheses ?? [],
     features: partial.features ?? [],
@@ -71,6 +74,15 @@ function snap(partial: Partial<ArtifactSnapshot>): ArtifactSnapshot {
     byFeatureId: partial.byFeatureId ?? new Map(),
     tasksByFeatureId: partial.tasksByFeatureId ?? new Map(),
     byReleaseId: partial.byReleaseId ?? new Map(),
+    metricsByHypothesisId:
+      partial.metricsByHypothesisId ??
+      metrics.reduce((map, m) => {
+        const hypId = (m.frontmatter as { problem_hypothesis_id?: string }).problem_hypothesis_id;
+        if (hypId) {
+          map.set(hypId, [...(map.get(hypId) ?? []), m]);
+        }
+        return map;
+      }, new Map<string, ParsedArtifact[]>()),
   };
 }
 
@@ -144,8 +156,8 @@ describe("reconcileDiscovery", () => {
     }
   });
 
-  it("passes accepted metric to SolutionDesigner brief when one exists", () => {
-    const m = metric("MET-0001", "accepted");
+  it("passes metrics to SolutionDesigner brief when metrics for the hypothesis exist", () => {
+    const m = metric("MET-0001", "PROB-0001", "accepted");
     const h = hypothesis("PROB-0001", "accepted", "# H\n\n## Evidence\n\nDone.\n");
     const snapshot = snap({
       metrics: [m],
@@ -163,15 +175,17 @@ describe("reconcileDiscovery", () => {
       const cmd = result.commands[0];
       expect(cmd?.kind).toBe("spawn_solution_designer");
       if (cmd?.kind === "spawn_solution_designer") {
-        expect(cmd.brief.metricId).toBe("MET-0001");
+        expect(cmd.brief.metrics[0]?.metricId).toBe("MET-0001");
       }
     }
   });
 
   it("is idle when accepted hypothesis already has an active solution hypothesis", () => {
+    const m = metric("MET-0001", "PROB-0001", "accepted");
     const h = hypothesis("PROB-0001", "accepted", "# H\n\n## Evidence\n\nDone.\n");
-    const sh = solutionHypothesis("SOL-0001", "PROB-0001", "proposed");
+    const sh = solutionHypothesis("SOL-0001", "MET-0001", "proposed");
     const snapshot = snap({
+      metrics: [m],
       hypotheses: [h],
       solutionHypotheses: [sh],
       byHypothesisId: new Map([[h.frontmatter.id, h]]),
@@ -188,7 +202,7 @@ describe("reconcileDiscovery", () => {
   });
 
   it("spawns FeatureDesigner when solution hypothesis accepted and has no features", () => {
-    const sh = solutionHypothesis("SOL-0001", "PROB-0001", "accepted");
+    const sh = solutionHypothesis("SOL-0001", "MET-0001", "accepted");
     const snapshot = snap({
       solutionHypotheses: [sh],
       features: [],
@@ -205,7 +219,7 @@ describe("reconcileDiscovery", () => {
   });
 
   it("is idle when accepted solution hypothesis already has features", () => {
-    const sh = solutionHypothesis("SOL-0001", "PROB-0001", "accepted");
+    const sh = solutionHypothesis("SOL-0001", "MET-0001", "accepted");
     const f = {
       kind: "feature" as const,
       filePath: "/doc/product/03-features/0001-f.md",
@@ -234,7 +248,7 @@ describe("reconcileDiscovery", () => {
   });
 
   it("is idle (not error) when solution hypothesis is proposed — no filler agent yet", () => {
-    const sh = solutionHypothesis("SOL-0001", "PROB-0001", "proposed");
+    const sh = solutionHypothesis("SOL-0001", "MET-0001", "proposed");
     const snapshot = snap({
       solutionHypotheses: [sh],
       bySolutionHypothesisId: new Map([[sh.frontmatter.id, sh]]),
@@ -248,7 +262,7 @@ describe("reconcileDiscovery", () => {
   });
 
   it("spawns Designer enrich for scaffold feature with solution_hypothesis_id", () => {
-    const sh = solutionHypothesis("SOL-0001", "PROB-0001", "accepted");
+    const sh = solutionHypothesis("SOL-0001", "MET-0001", "accepted");
     const f = {
       kind: "feature" as const,
       filePath: "/doc/product/03-features/0004-f.md",

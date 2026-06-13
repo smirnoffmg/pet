@@ -43,7 +43,6 @@ async function handleExploreProblem(userInput: string, repoRoot: string): Promis
   const fm: HypothesisFrontmatter = {
     id: problemHypothesisIdSchema.parse(id),
     status: "proposed",
-    target_metric_ids: [],
   };
 
   const written = writeArtifact(root, "hypothesis", fm, title);
@@ -85,10 +84,8 @@ async function scaffoldNewSolutionHypothesis(
   docRootPath: string,
   artifacts: ParsedArtifact[],
 ): Promise<{ id: string; filePath: string } | undefined> {
-  const hypothesisChoices = artifacts
-    .filter((a) => a.kind === "hypothesis")
-    .map((a) => ({ name: a.frontmatter.id, value: a.frontmatter.id }));
-  if (hypothesisChoices.length === 0) {
+  const hypotheses = artifacts.filter((a) => a.kind === "hypothesis");
+  if (hypotheses.length === 0) {
     process.stderr.write("No hypotheses found. Create one with: pet new hypothesis\n");
     return undefined;
   }
@@ -100,10 +97,6 @@ async function scaffoldNewSolutionHypothesis(
     return undefined;
   }
 
-  const problemHypothesisId = await select<string>({
-    message: "Problem hypothesis",
-    choices: hypothesisChoices,
-  });
   const targetMetricId = await select<string>({
     message: "Target metric",
     choices: metricChoices,
@@ -114,8 +107,7 @@ async function scaffoldNewSolutionHypothesis(
   const fm: SolutionHypothesisFrontmatter = {
     id: solutionHypothesisIdSchema.parse(newId),
     status: "proposed",
-    problem_hypothesis_id: problemHypothesisIdSchema.parse(problemHypothesisId),
-    target_metric_id: metricIdSchema.parse(targetMetricId),
+    metric_ids: [metricIdSchema.parse(targetMetricId)],
   };
 
   const written = writeArtifact(docRootPath, "solution_hypothesis", fm, title);

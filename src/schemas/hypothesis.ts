@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { problemHypothesisIdSchema, metricIdSchema } from "./ids.js";
+import { problemHypothesisIdSchema } from "./ids.js";
 import { supersessionFields, withSupersessionRefine } from "./base.js";
 
 const hypothesisStatusSchema = z.enum([
@@ -14,7 +14,6 @@ export const hypothesisFrontmatterSchema = withSupersessionRefine(
   z.object({
     id: problemHypothesisIdSchema,
     status: hypothesisStatusSchema,
-    target_metric_ids: z.array(metricIdSchema),
     ...supersessionFields,
   }),
 );

@@ -14,6 +14,7 @@ export async function runTree(): Promise<number> {
     const { unmount } = render(
       React.createElement(TreeUI, {
         docRoot: root,
+        repoRoot,
         repoName,
         branch,
         onExit: (code: number) => {

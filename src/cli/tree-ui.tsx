@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { petDataDir } from "@/config.js";
+import { computeRepoHash } from "@/store/repo-hash.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { Box, Text, useInput, useStdin, useStdout } from "ink";
 import { scanArtifacts } from "@/store/scan.js";
@@ -8,6 +10,7 @@ import type { Action } from "@/cli/next-cmd.js";
 import { dispatchReplCommand } from "@/cli/repl-dispatch.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
@@ -88,11 +91,23 @@ function buildRows(
   const feats = artifacts.filter((a) => a.kind === "feature");
   const tasks = artifacts.filter((a) => a.kind === "task");
 
+  const metricById = new Map<string, ParsedArtifact>(
+    artifacts.filter((a) => a.kind === "metric").map((m) => [m.frontmatter.id as string, m]),
+  );
+
   // Pre-compute which IDs have children
   const solsByHyp = new Map<string, ParsedArtifact[]>();
   for (const sol of sols.filter(active)) {
-    const pid = (sol.frontmatter as SolutionHypothesisFrontmatter).problem_hypothesis_id as string;
-    solsByHyp.set(pid, [...(solsByHyp.get(pid) ?? []), sol]);
+    const metricIds = (sol.frontmatter as SolutionHypothesisFrontmatter).metric_ids as string[];
+    const pid = (() => {
+      for (const mid of metricIds) {
+        const met = metricById.get(mid);
+        if (met)
+          return (met.frontmatter as TargetMetricFrontmatter).problem_hypothesis_id as string;
+      }
+      return undefined;
+    })();
+    if (pid) solsByHyp.set(pid, [...(solsByHyp.get(pid) ?? []), sol]);
   }
   const featsBySol = new Map<string, ParsedArtifact[]>();
   for (const feat of feats.filter(active)) {
@@ -207,14 +222,31 @@ interface HeaderProps {
   repoName: string;
   branch: string;
   count: number;
+  activeTab: "tree" | "logs";
 }
 
-function Header({ repoName, branch, count }: HeaderProps) {
+function Header({ repoName, branch, count, activeTab }: HeaderProps) {
   return (
     <Box borderStyle="single" marginBottom={1} justifyContent="space-between">
-      <Text bold color="cyan">
-        pet
-      </Text>
+      <Box gap={2}>
+        <Text bold color="cyan">
+          pet
+        </Text>
+        {activeTab === "tree" ? (
+          <Text bold color="white">
+            TREE
+          </Text>
+        ) : (
+          <Text dimColor>tree</Text>
+        )}
+        {activeTab === "logs" ? (
+          <Text bold color="white">
+            LOGS
+          </Text>
+        ) : (
+          <Text dimColor>logs</Text>
+        )}
+      </Box>
       <Text dimColor>{`${repoName}  [${branch}]  ${count} artifacts`}</Text>
     </Box>
   );
@@ -305,8 +337,8 @@ function DockedStrip({ state }: DockedStripProps) {
       paddingX={1}
     >
       <Text color="yellow">{`● Running  ${state.command}  · ${state.elapsed}s`}</Text>
-      {state.recentCalls.map((call, i) =>
-        i === state.recentCalls.length - 1 ? (
+      {state.recentCalls.slice(-4).map((call, i, arr) =>
+        i === arr.length - 1 ? (
           <Text key={i} color="blue">
             {"  "}
             {call}
@@ -327,19 +359,120 @@ interface FooterProps {
   onActionRow: boolean;
   cursor: number;
   total: number;
+  activeTab: "tree" | "logs";
 }
 
-function Footer({ phase, onActionRow, cursor, total }: FooterProps) {
+function Footer({ phase, onActionRow, cursor, total, activeTab }: FooterProps) {
   const hint =
     phase === "running"
-      ? "[Ctrl-C] abort"
-      : onActionRow
-        ? "↑↓ move  ↵ run  Esc back"
-        : "↑↓ move   ↵ actions   ←/→ collapse/expand   q quit";
+      ? `[Ctrl-C] abort   l ${activeTab === "tree" ? "logs" : "tree"}`
+      : activeTab === "logs"
+        ? "↑↓ scroll   l tree   q quit"
+        : onActionRow
+          ? "↑↓ move  ↵ run  Esc back   l logs"
+          : "↑↓ move   ↵ actions   ←/→ collapse/expand   l logs   q quit";
   return (
     <Box borderStyle="single" justifyContent="space-between">
       <Text dimColor>{hint}</Text>
-      {phase !== "running" && <Text dimColor>{`${cursor} / ${total}`}</Text>}
+      {phase !== "running" && activeTab === "tree" && (
+        <Text dimColor>{`${cursor} / ${total}`}</Text>
+      )}
+    </Box>
+  );
+}
+
+// ─── Logs view ───────────────────────────────────────────────────────────────
+
+const LOG_POLL_MS = 2000;
+const LOG_TAIL_LINES = 200;
+
+function latestRunLog(repoRoot: string): string | null {
+  const repoHash = computeRepoHash(repoRoot);
+  const sessionsRoot = path.join(petDataDir(repoHash), "sessions");
+  if (!fs.existsSync(sessionsRoot)) return null;
+  const entries = fs
+    .readdirSync(sessionsRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => {
+      const full = path.join(sessionsRoot, e.name);
+      return { name: e.name, mtime: fs.statSync(full).mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+  const first = entries[0];
+  if (!first) return null;
+  const logPath = path.join(sessionsRoot, first.name, "run.log");
+  return fs.existsSync(logPath) ? logPath : null;
+}
+
+interface LogsViewProps {
+  repoRoot: string;
+  phase: Phase;
+  agentState: AgentState | null;
+  logScroll: number;
+  onScrollChange: (updater: (s: number) => number) => void;
+}
+
+function LogsView({ repoRoot, phase, agentState, logScroll, onScrollChange }: LogsViewProps) {
+  const [idleLines, setIdleLines] = useState<string[]>([]);
+  const { stdout } = useStdout();
+  const viewHeight = Math.max(3, (stdout.rows ?? 24) - HEADER_LINES - CONTROLS_LINES - 2);
+
+  useEffect(() => {
+    if (phase !== "idle") return;
+
+    function loadLog() {
+      const logPath = latestRunLog(repoRoot);
+      if (!logPath) {
+        setIdleLines(["No session logs yet — run an agent first."]);
+        return;
+      }
+      const content = fs.readFileSync(logPath, "utf8");
+      const all = content.split("\n").filter((l) => l.length > 0);
+      setIdleLines(all.slice(-LOG_TAIL_LINES));
+    }
+
+    loadLog();
+    const id = setInterval(loadLog, LOG_POLL_MS);
+    return () => clearInterval(id);
+  }, [phase, repoRoot]);
+
+  useEffect(() => {
+    onScrollChange((s) => Math.min(s, Math.max(0, idleLines.length - viewHeight)));
+  }, [idleLines.length, viewHeight]);
+
+  if (phase === "running" && agentState !== null) {
+    const calls = agentState.recentCalls;
+    const visible = calls.slice(-viewHeight);
+    return (
+      <Box flexDirection="column" paddingX={1} flexGrow={1}>
+        <Text color="yellow">{`● ${agentState.command}  · ${agentState.elapsed}s`}</Text>
+        <Text dimColor>{"─".repeat(60)}</Text>
+        {visible.map((call, i) =>
+          i === visible.length - 1 ? (
+            <Text key={i} color="blue">
+              {call}
+            </Text>
+          ) : (
+            <Text key={i} dimColor>
+              {call}
+            </Text>
+          ),
+        )}
+      </Box>
+    );
+  }
+
+  const aboveCount = logScroll;
+  const belowCount = Math.max(0, idleLines.length - logScroll - viewHeight);
+  const visible = idleLines.slice(logScroll, logScroll + viewHeight);
+
+  return (
+    <Box flexDirection="column" paddingX={1} flexGrow={1}>
+      {aboveCount > 0 && <Text dimColor>{`↑ ${aboveCount} more`}</Text>}
+      {visible.map((line, i) => (
+        <Text key={i}>{line}</Text>
+      ))}
+      {belowCount > 0 && <Text dimColor>{`↓ ${belowCount} more`}</Text>}
     </Box>
   );
 }
@@ -348,6 +481,7 @@ function Footer({ phase, onActionRow, cursor, total }: FooterProps) {
 
 interface TreeUIProps {
   docRoot: string;
+  repoRoot: string;
   repoName: string;
   branch: string;
   onExit: (code: number) => void;
@@ -357,7 +491,7 @@ const HEADER_LINES = 6; // box (3) + marginBottom (1) + col-header (1) + divider
 const CONTROLS_LINES = 3; // footer box: border + content + border
 const DOCKED_MAX_LINES = 8; // marginTop + border + "Running" + 4 calls + border
 
-export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
+export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIProps) {
   const [artifacts, setArtifacts] = useState<ParsedArtifact[]>([]);
   const [cursor, setCursor] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -366,6 +500,8 @@ export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
   const [expandedActions, setExpandedActions] = useState<Action[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [agentState, setAgentState] = useState<AgentState | null>(null);
+  const [activeTab, setActiveTab] = useState<"tree" | "logs">("tree");
+  const [logScroll, setLogScroll] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
   const { stdout } = useStdout();
 
@@ -489,7 +625,7 @@ export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
         setAgentState((prev) => {
           if (!prev) return null;
           const entry = `${e.name.padEnd(14)}${e.path}`;
-          return { ...prev, recentCalls: [...prev.recentCalls, entry].slice(-4) };
+          return { ...prev, recentCalls: [...prev.recentCalls, entry] };
         });
       },
     };
@@ -500,7 +636,7 @@ export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
           prev
             ? {
                 ...prev,
-                recentCalls: [...prev.recentCalls, `✗ failed (code ${code})`].slice(-4),
+                recentCalls: [...prev.recentCalls, `✗ failed (code ${code})`],
               }
             : null,
         );
@@ -517,10 +653,25 @@ export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
 
   useInput(
     (input, key) => {
+      if (input === "l") {
+        setActiveTab((tab) => {
+          if (tab === "tree") setLogScroll(0);
+          return tab === "tree" ? "logs" : "tree";
+        });
+        return;
+      }
+
       if (phase === "running") {
         if (key.ctrl && input === "c") {
           process.kill(process.pid, "SIGINT");
         }
+        return;
+      }
+
+      if (activeTab === "logs") {
+        if (key.upArrow) setLogScroll((s) => Math.max(0, s - 1));
+        if (key.downArrow) setLogScroll((s) => s + 1);
+        if (input === "q") onExit(0);
         return;
       }
 
@@ -634,44 +785,60 @@ export function TreeUI({ docRoot, repoName, branch, onExit }: TreeUIProps) {
 
   return (
     <Box flexDirection="column" height={stdout.rows ?? 24}>
-      <Header repoName={repoName} branch={branch} count={artifacts.length} />
+      <Header repoName={repoName} branch={branch} count={artifacts.length} activeTab={activeTab} />
 
-      <Box flexDirection="column" paddingX={1} flexGrow={1}>
-        <Text dimColor>{"    ID        STATUS     TITLE"}</Text>
-        <Text dimColor>{"    " + "─".repeat(68)}</Text>
+      {activeTab === "logs" ? (
+        <LogsView
+          repoRoot={repoRoot}
+          phase={phase}
+          agentState={agentState}
+          logScroll={logScroll}
+          onScrollChange={setLogScroll}
+        />
+      ) : (
+        <Box flexDirection="column" paddingX={1} flexGrow={1}>
+          <Text dimColor>{"    ID        STATUS     TITLE"}</Text>
+          <Text dimColor>{"    " + "─".repeat(68)}</Text>
 
-        {aboveCount > 0 && <Text dimColor>{`  ↑ ${aboveCount} more`}</Text>}
+          {aboveCount > 0 && <Text dimColor>{`  ↑ ${aboveCount} more`}</Text>}
 
-        {visibleRows.map((row, i) => {
-          const absoluteIndex = scrollOffset + i;
-          const focused = absoluteIndex === cursor;
-          if (row.type === "artifact") {
-            const id = fm(row.artifact).id;
+          {visibleRows.map((row, i) => {
+            const absoluteIndex = scrollOffset + i;
+            const focused = absoluteIndex === cursor;
+            if (row.type === "artifact") {
+              const id = fm(row.artifact).id;
+              return (
+                <TreeRowView
+                  key={id}
+                  row={row}
+                  focused={focused}
+                  expanded={expanded === id}
+                  agentRunning={agentState?.runningArtifactId === id}
+                />
+              );
+            }
             return (
-              <TreeRowView
-                key={id}
+              <ActionRowView
+                key={`action-${row.actionIndex}-${row.action.command}`}
                 row={row}
                 focused={focused}
-                expanded={expanded === id}
-                agentRunning={agentState?.runningArtifactId === id}
               />
             );
-          }
-          return (
-            <ActionRowView
-              key={`action-${row.actionIndex}-${row.action.command}`}
-              row={row}
-              focused={focused}
-            />
-          );
-        })}
+          })}
 
-        {belowCount > 0 && <Text dimColor>{`  ↓ ${belowCount} more`}</Text>}
-      </Box>
+          {belowCount > 0 && <Text dimColor>{`  ↓ ${belowCount} more`}</Text>}
+        </Box>
+      )}
 
-      {agentState !== null && <DockedStrip state={agentState} />}
+      {activeTab === "tree" && agentState !== null && <DockedStrip state={agentState} />}
 
-      <Footer phase={phase} onActionRow={onActionRow} cursor={cursor + 1} total={rows.length} />
+      <Footer
+        phase={phase}
+        onActionRow={onActionRow}
+        cursor={cursor + 1}
+        total={rows.length}
+        activeTab={activeTab}
+      />
     </Box>
   );
 }

@@ -68,12 +68,12 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       const file = writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: proposed\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: proposed\n---\n# H\n`,
       );
 
       const code = await runAcceptHypothesis("PROB-0001", { yes: true });
@@ -88,7 +88,7 @@ describe("runAccept* --yes flag", () => {
       const file = writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: proposed\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: proposed\n---\n# H\n`,
       );
       confirmMock.mockResolvedValueOnce(false);
 
@@ -105,12 +105,12 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       const file = writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: proposed\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: proposed\n---\n# H\n`,
       );
       confirmMock.mockResolvedValueOnce(true);
 
@@ -129,17 +129,17 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: accepted\n---\n# H\n`,
       );
       const file = writeArtifact(
         fixture,
         "product/02-solution-hypotheses/0001-s.md",
-        `---\nid: SOL-0001\nstatus: proposed\nproblem_hypothesis_id: PROB-0001\ntarget_metric_id: MET-0001\n---\n# S\n`,
+        `---\nid: SOL-0001\nstatus: proposed\nmetric_ids:\n  - MET-0001\n---\n# S\n`,
       );
 
       const code = await runAcceptSolutionHypothesis("SOL-0001", { yes: true });
@@ -154,17 +154,17 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: accepted\n---\n# H\n`,
       );
       const file = writeArtifact(
         fixture,
         "product/02-solution-hypotheses/0001-s.md",
-        `---\nid: SOL-0001\nstatus: proposed\nproblem_hypothesis_id: PROB-0001\ntarget_metric_id: MET-0001\n---\n# S\n`,
+        `---\nid: SOL-0001\nstatus: proposed\nmetric_ids:\n  - MET-0001\n---\n# S\n`,
       );
       confirmMock.mockResolvedValueOnce(false);
 
@@ -183,17 +183,17 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: accepted\n---\n# H\n`,
       );
       writeArtifact(
         fixture,
         "product/02-solution-hypotheses/0001-s.md",
-        `---\nid: SOL-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\ntarget_metric_id: MET-0001\n---\n# S\n`,
+        `---\nid: SOL-0001\nstatus: accepted\nmetric_ids:\n  - MET-0001\n---\n# S\n`,
       );
       const file = writeArtifact(
         fixture,
@@ -213,17 +213,17 @@ describe("runAccept* --yes flag", () => {
       writeArtifact(
         fixture,
         "product/01-metrics/0001-m.md",
-        `---\nid: MET-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# M\n`,
+        `---\nid: MET-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\n---\n# M\n`,
       );
       writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: accepted\n---\n# H\n`,
       );
       writeArtifact(
         fixture,
         "product/02-solution-hypotheses/0001-s.md",
-        `---\nid: SOL-0001\nstatus: accepted\nproblem_hypothesis_id: PROB-0001\ntarget_metric_id: MET-0001\n---\n# S\n`,
+        `---\nid: SOL-0001\nstatus: accepted\nmetric_ids:\n  - MET-0001\n---\n# S\n`,
       );
       const file = writeArtifact(
         fixture,
@@ -247,7 +247,7 @@ describe("runAccept* --yes flag", () => {
       const file = writeArtifact(
         fixture,
         "product/00-problem-hypotheses/0001-h.md",
-        `---\nid: PROB-0001\nstatus: accepted\ntarget_metric_ids:\n  - MET-0001\n---\n# H\n`,
+        `---\nid: PROB-0001\nstatus: accepted\n---\n# H\n`,
       );
 
       const code = await runAcceptHypothesis("PROB-0001", { yes: true });

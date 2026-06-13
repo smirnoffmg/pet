@@ -44,16 +44,7 @@ export function createQaFixture(): QaFixtureContext {
   // Ancestry chain: MET-0001 → PROB-0001 → SOL-0001 → FEAT-*
   fs.writeFileSync(
     path.join(root, "00-problem-hypotheses", "0001-hyp-accepted.md"),
-    [
-      "---",
-      "id: PROB-0001",
-      "status: accepted",
-      "target_metric_ids:",
-      "  - MET-0001",
-      "---",
-      "",
-      "# Hypothesis",
-    ].join("\n"),
+    ["---", "id: PROB-0001", "status: accepted", "---", "", "# Hypothesis"].join("\n"),
     "utf8",
   );
   fs.writeFileSync(
@@ -62,8 +53,8 @@ export function createQaFixture(): QaFixtureContext {
       "---",
       "id: SOL-0001",
       "status: accepted",
-      "problem_hypothesis_id: PROB-0001",
-      "target_metric_id: MET-0001",
+      "metric_ids:",
+      "  - MET-0001",
       "---",
       "",
       "# Solution hypothesis",
@@ -188,7 +179,15 @@ export function createQaFixture(): QaFixtureContext {
   // Sentinel metric
   fs.writeFileSync(
     path.join(root, "01-metrics", "0001-sentinel.md"),
-    ["---", "id: MET-0001", "status: proposed", "---", "", "# Sentinel metric"].join("\n"),
+    [
+      "---",
+      "id: MET-0001",
+      "status: proposed",
+      "problem_hypothesis_id: PROB-0001",
+      "---",
+      "",
+      "# Sentinel metric",
+    ].join("\n"),
     "utf8",
   );
 

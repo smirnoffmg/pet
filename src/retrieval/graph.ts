@@ -1,6 +1,6 @@
 import type { ArtifactId } from "@/schemas/ids.js";
 import type { ArtifactIndex } from "@/store/scan.js";
-import type { HypothesisFrontmatter } from "@/schemas/hypothesis.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
@@ -30,15 +30,14 @@ export function buildAdjacency(index: ArtifactIndex): AdjacencyMap {
     const id = artifact.frontmatter.id as ArtifactId;
     const fm = artifact.frontmatter;
 
-    if (artifact.kind === "hypothesis") {
-      const h = fm as HypothesisFrontmatter;
-      for (const metricId of h.target_metric_ids) link(adj, id, metricId as ArtifactId);
-      if (h.supersedes) link(adj, id, h.supersedes as ArtifactId);
-      if (h.superseded_by) link(adj, id, h.superseded_by as ArtifactId);
+    if (artifact.kind === "metric") {
+      const m = fm as TargetMetricFrontmatter;
+      link(adj, id, m.problem_hypothesis_id as ArtifactId);
+      if (m.supersedes) link(adj, id, m.supersedes as ArtifactId);
+      if (m.superseded_by) link(adj, id, m.superseded_by as ArtifactId);
     } else if (artifact.kind === "solution_hypothesis") {
       const sh = fm as SolutionHypothesisFrontmatter;
-      link(adj, id, sh.problem_hypothesis_id as ArtifactId);
-      link(adj, id, sh.target_metric_id as ArtifactId);
+      for (const metricId of sh.metric_ids) link(adj, id, metricId as ArtifactId);
       if (sh.supersedes) link(adj, id, sh.supersedes as ArtifactId);
       if (sh.superseded_by) link(adj, id, sh.superseded_by as ArtifactId);
     } else if (artifact.kind === "feature") {

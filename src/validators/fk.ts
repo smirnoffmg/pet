@@ -17,33 +17,8 @@ export function validateForeignKeys(
     const fm = artifact.frontmatter;
     const id = fm.id;
 
-    if (artifact.kind === "hypothesis" && "target_metric_ids" in fm) {
-      for (const metricId of fm.target_metric_ids) {
-        if (!refExists(index, metricId)) {
-          issues.push(
-            issue("fk", `target_metric_ids entry ${metricId} does not exist`, {
-              artifactId: id,
-              filePath: artifact.filePath,
-            }),
-          );
-        }
-      }
-      const acceptedStatuses = new Set(["accepted", "validated", "invalidated"]);
-      if (
-        acceptedStatuses.has(fm.status as string) &&
-        (fm.target_metric_ids as unknown[]).length === 0
-      ) {
-        issues.push(
-          issue("fk", "accepted hypothesis must have at least one target_metric_id", {
-            artifactId: id,
-            filePath: artifact.filePath,
-          }),
-        );
-      }
-    }
-
-    if (artifact.kind === "solution_hypothesis") {
-      if ("problem_hypothesis_id" in fm && !refExists(index, fm.problem_hypothesis_id)) {
+    if (artifact.kind === "metric" && "problem_hypothesis_id" in fm) {
+      if (!refExists(index, fm.problem_hypothesis_id)) {
         issues.push(
           issue("fk", `problem_hypothesis_id ${fm.problem_hypothesis_id} does not exist`, {
             artifactId: id,
@@ -51,18 +26,18 @@ export function validateForeignKeys(
           }),
         );
       }
+    }
 
-      if (
-        "target_metric_id" in fm &&
-        fm.target_metric_id != null &&
-        !refExists(index, fm.target_metric_id)
-      ) {
-        issues.push(
-          issue("fk", `target_metric_id ${fm.target_metric_id} does not exist`, {
-            artifactId: id,
-            filePath: artifact.filePath,
-          }),
-        );
+    if (artifact.kind === "solution_hypothesis" && "metric_ids" in fm) {
+      for (const metricId of fm.metric_ids as string[]) {
+        if (!refExists(index, metricId)) {
+          issues.push(
+            issue("fk", `metric_ids entry ${metricId} does not exist`, {
+              artifactId: id,
+              filePath: artifact.filePath,
+            }),
+          );
+        }
       }
     }
 

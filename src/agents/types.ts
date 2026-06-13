@@ -52,9 +52,9 @@ export const solutionDesignerBriefSchema = z.object({
   hypothesisId: problemHypothesisIdSchema,
   hypothesisTitle: z.string().min(1),
   hypothesisBody: z.string(),
-  metricId: metricIdSchema.optional(),
-  metricTitle: z.string().optional(),
-  metricBody: z.string().optional(),
+  metrics: z.array(
+    z.object({ metricId: metricIdSchema, metricTitle: z.string(), metricBody: z.string() }),
+  ),
 });
 
 export const featureDesignerBriefSchema = z.object({
@@ -153,6 +153,7 @@ export type ArtifactSnapshot = {
   byFeatureId: Map<string, ParsedArtifact>;
   tasksByFeatureId: Map<string, ParsedArtifact[]>;
   byReleaseId: Map<string, ParsedArtifact>;
+  metricsByHypothesisId: Map<string, ParsedArtifact[]>;
 };
 
 export type FeatureSnapshot = {

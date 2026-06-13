@@ -43,22 +43,21 @@ export function createDeliverFixture(): DeliverFixtureContext {
   }
 
   fs.writeFileSync(
-    path.join(productRoot, "01-metrics/0001-m.md"),
-    ["---", "id: MET-0001", "status: accepted", "---", "", "# Metric", ""].join("\n"),
+    path.join(productRoot, "00-problem-hypotheses/0001-prob.md"),
+    ["---", "id: PROB-0001", "status: proposed", "---", "", "# Problem", ""].join("\n"),
     "utf8",
   );
 
   fs.writeFileSync(
-    path.join(productRoot, "00-problem-hypotheses/0001-prob.md"),
+    path.join(productRoot, "01-metrics/0001-m.md"),
     [
       "---",
-      "id: PROB-0001",
-      "status: proposed",
-      "target_metric_ids:",
-      "  - MET-0001",
+      "id: MET-0001",
+      "status: accepted",
+      "problem_hypothesis_id: PROB-0001",
       "---",
       "",
-      "# Problem",
+      "# Metric",
       "",
     ].join("\n"),
     "utf8",
@@ -70,8 +69,8 @@ export function createDeliverFixture(): DeliverFixtureContext {
       "---",
       "id: SOL-0001",
       "status: accepted",
-      "problem_hypothesis_id: PROB-0001",
-      "target_metric_id: MET-0001",
+      "metric_ids:",
+      "  - MET-0001",
       "---",
       "",
       "# Solution",

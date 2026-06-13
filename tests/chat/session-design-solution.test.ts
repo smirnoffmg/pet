@@ -150,7 +150,7 @@ describe("runChatSession — design-solution branch", () => {
     scanArtifactsMock.mockReturnValue(
       ok([hypothesisArtifact("PROB-0007"), metricArtifact("MET-0003")]),
     );
-    selectMock.mockResolvedValueOnce("PROB-0007").mockResolvedValueOnce("MET-0003");
+    selectMock.mockResolvedValueOnce("MET-0003");
     confirmMock.mockResolvedValueOnce(true);
 
     await runChatSession({ repoRoot: "/tmp/repo" });
@@ -163,8 +163,7 @@ describe("runChatSession — design-solution branch", () => {
     expect(writeCall?.[2]).toMatchObject({
       id: "SOL-0099",
       status: "proposed",
-      problem_hypothesis_id: "PROB-0007",
-      target_metric_id: "MET-0003",
+      metric_ids: ["MET-0003"],
     });
     expect(writeCall?.[3]).toBe("Build Notification Feature");
 
@@ -188,7 +187,7 @@ describe("runChatSession — design-solution branch", () => {
       ]),
     );
     confirmMock.mockResolvedValueOnce(false).mockResolvedValueOnce(false);
-    selectMock.mockResolvedValueOnce("PROB-0007").mockResolvedValueOnce("MET-0003");
+    selectMock.mockResolvedValueOnce("MET-0003");
 
     await runChatSession({ repoRoot: "/tmp/repo" });
 
@@ -201,7 +200,7 @@ describe("runChatSession — design-solution branch", () => {
     scanArtifactsMock.mockReturnValue(
       ok([hypothesisArtifact("PROB-0007"), metricArtifact("MET-0003")]),
     );
-    selectMock.mockResolvedValueOnce("PROB-0007").mockResolvedValueOnce("MET-0003");
+    selectMock.mockResolvedValueOnce("MET-0003");
     confirmMock.mockResolvedValueOnce(false);
 
     await runChatSession({ repoRoot: "/tmp/repo" });
@@ -255,7 +254,7 @@ describe("runChatSession — design-solution branch", () => {
     scanArtifactsMock.mockReturnValue(
       ok([hypothesisArtifact("PROB-0007"), metricArtifact("MET-0003")]),
     );
-    selectMock.mockResolvedValueOnce("PROB-0007").mockResolvedValueOnce("MET-0003");
+    selectMock.mockResolvedValueOnce("MET-0003");
     writeArtifactMock.mockReturnValueOnce(err({ message: "disk full" }));
 
     await runChatSession({ repoRoot: "/tmp/repo" });
@@ -274,7 +273,7 @@ describe("runChatSession — design-solution branch", () => {
         metricArtifact("MET-0003"),
       ]),
     );
-    selectMock.mockResolvedValueOnce("PROB-0007").mockResolvedValueOnce("MET-0003");
+    selectMock.mockResolvedValueOnce("MET-0003");
     confirmMock.mockResolvedValueOnce(false);
 
     await runChatSession({ repoRoot: "/tmp/repo" });

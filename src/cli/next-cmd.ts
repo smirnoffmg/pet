@@ -2,6 +2,7 @@ import { scanArtifacts } from "@/store/scan.js";
 import { docRoot, findRepoRoot } from "@/store/repo-root.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
 import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
@@ -95,10 +96,20 @@ export function computeActions(artifacts: ParsedArtifact[]): Action[] {
   }
 
   // Priority 8: accepted PROB- with no SOL-
+  const metricById = new Map<string, ParsedArtifact>(
+    byKind("metric").map((m) => [m.frontmatter.id as string, m]),
+  );
+  const hypothesisIdsForSol = (sol: ParsedArtifact): string[] => {
+    const ids = ((sol.frontmatter as SolutionHypothesisFrontmatter).metric_ids ?? []) as string[];
+    return ids
+      .map((mid) => metricById.get(mid))
+      .filter(Boolean)
+      .map((m) => (m!.frontmatter as TargetMetricFrontmatter).problem_hypothesis_id as string);
+  };
   const hypIdsWithSol = new Set(
     byKind("solution_hypothesis")
       .filter((a) => fm(a).status !== "superseded")
-      .map((s) => (s.frontmatter as SolutionHypothesisFrontmatter).problem_hypothesis_id as string),
+      .flatMap(hypothesisIdsForSol),
   );
   for (const a of byKind("hypothesis").filter(accepted).sort(byId)) {
     if (!hypIdsWithSol.has(fm(a).id)) {
@@ -180,12 +191,16 @@ function computeArtifactActionsFor(
           actions.push({ command: `pet accept hypothesis ${id}`, reason: "lock and proceed" });
         }
       } else if (status === "accepted") {
-        const hasSol = allArtifacts.some(
-          (a) =>
-            a.kind === "solution_hypothesis" &&
-            (a.frontmatter as SolutionHypothesisFrontmatter).problem_hypothesis_id === id &&
-            fm(a).status !== "superseded",
+        const metricByIdLocal = new Map(
+          allArtifacts.filter((a) => a.kind === "metric").map((m) => [m.frontmatter.id, m]),
         );
+        const hasSol = allArtifacts.some((a) => {
+          if (a.kind !== "solution_hypothesis" || fm(a).status === "superseded") return false;
+          return ((a.frontmatter as SolutionHypothesisFrontmatter).metric_ids ?? []).some((mid) => {
+            const met = metricByIdLocal.get(mid);
+            return met && (met.frontmatter as TargetMetricFrontmatter).problem_hypothesis_id === id;
+          });
+        });
         if (!hasSol) {
           actions.push({
             command: `pet discover --hypothesis ${id}`,

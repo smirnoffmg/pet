@@ -1,8 +1,6 @@
 ---
 id: PROB-0001
 status: accepted
-target_metric_ids:
-  - MET-0001
 ---
 
 # Small teams lose strategic context when product decisions live outside the codebase

@@ -76,6 +76,7 @@ export function explainDiscoveryIdle(snapshot: ArtifactSnapshot, target: Discove
   if (fm.status === "accepted") {
     const active = activeSolutionHypothesesForHypothesis(
       snapshot.solutionHypotheses,
+      snapshot.metrics,
       target.hypothesisId,
     );
     if (active.length > 0) {
@@ -188,26 +189,19 @@ function reconcileForHypothesis(
   }
 
   if (fm.status === "accepted") {
-    const active = activeSolutionHypothesesForHypothesis(snapshot.solutionHypotheses, hypothesisId);
+    const active = activeSolutionHypothesesForHypothesis(
+      snapshot.solutionHypotheses,
+      snapshot.metrics,
+      hypothesisId,
+    );
     if (active.length > 0) {
       return { ok: true, commands: [] };
     }
-    const acceptedMetric = snapshot.metrics.find((m) => {
-      const mFm = m.frontmatter as TargetMetricFrontmatter;
-      return mFm.status === "accepted";
-    });
-    const metricFields = acceptedMetric
-      ? {
-          metricId: metricIdSchema.parse(
-            (acceptedMetric.frontmatter as TargetMetricFrontmatter).id,
-          ),
-          metricTitle: extractTitle(
-            acceptedMetric.body,
-            (acceptedMetric.frontmatter as TargetMetricFrontmatter).id,
-          ),
-          metricBody: acceptedMetric.body,
-        }
-      : {};
+    const hypothesisMetrics = (snapshot.metricsByHypothesisId.get(fm.id) ?? []).map((m) => ({
+      metricId: metricIdSchema.parse((m.frontmatter as TargetMetricFrontmatter).id),
+      metricTitle: extractTitle(m.body, (m.frontmatter as TargetMetricFrontmatter).id),
+      metricBody: m.body,
+    }));
     return {
       ok: true,
       commands: [
@@ -217,7 +211,7 @@ function reconcileForHypothesis(
             hypothesisId: problemHypothesisIdSchema.parse(fm.id),
             hypothesisTitle: title,
             hypothesisBody: hypothesis.body,
-            ...metricFields,
+            metrics: hypothesisMetrics,
           },
         },
       ],

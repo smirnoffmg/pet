@@ -1,8 +1,8 @@
 ---
 id: SOL-0003
 status: accepted
-problem_hypothesis_id: PROB-0001
-target_metric_id: MET-0003
+metric_ids:
+  - MET-0003
 ---
 
 # Agent-generated onboarding trace from code to rationale

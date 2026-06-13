@@ -139,7 +139,7 @@ export function createOrchestratorTools(
   ) as unknown as StructuredToolInterface;
 
   const createArtifact = tool(
-    ({ kind, title }: { kind: string; title: string }) => {
+    ({ kind, title, hypothesisId }: { kind: string; title: string; hypothesisId?: string }) => {
       const scanResult = scanArtifacts(docRoot);
       if (scanResult.isErr()) {
         return `Failed to scan artifacts: ${scanResult.error.message}`;
@@ -150,13 +150,24 @@ export function createOrchestratorTools(
       switch (kind) {
         case "hypothesis": {
           const id = problemHypothesisIdSchema.parse(allocateNextId("hypothesis", artifacts));
-          const fm: HypothesisFrontmatter = { id, status: "proposed", target_metric_ids: [] };
+          const fm: HypothesisFrontmatter = { id, status: "proposed" };
           result = writeArtifact(docRoot, "hypothesis", fm, title);
           break;
         }
         case "metric": {
+          if (!hypothesisId) {
+            return "hypothesisId (PROB-NNNN) is required when creating a metric";
+          }
+          const parsedHypId = problemHypothesisIdSchema.safeParse(hypothesisId);
+          if (!parsedHypId.success) {
+            return `Invalid hypothesisId: ${hypothesisId}`;
+          }
           const id = metricIdSchema.parse(allocateNextId("metric", artifacts));
-          const fm: TargetMetricFrontmatter = { id, status: "proposed" };
+          const fm: TargetMetricFrontmatter = {
+            id,
+            status: "proposed",
+            problem_hypothesis_id: parsedHypId.data,
+          };
           result = writeArtifact(docRoot, "metric", fm, title);
           break;
         }
@@ -191,6 +202,7 @@ export function createOrchestratorTools(
       schema: z.object({
         kind: z.string().describe("Artifact kind: hypothesis, metric, or adr"),
         title: z.string().describe("Human-readable title for the artifact"),
+        hypothesisId: z.string().optional().describe("PROB-NNNN — required when kind is metric"),
       }),
     },
   ) as unknown as StructuredToolInterface;

@@ -66,9 +66,14 @@ export async function runNew(
   let filePath: string;
   switch (kind) {
     case "metric": {
+      const hypothesisId = await resolveProblemHypothesisId(options.hypothesis, root);
+      if (!hypothesisId) {
+        return 1;
+      }
       const fm: TargetMetricFrontmatter = {
         id: metricIdSchema.parse(id),
         status: "proposed",
+        problem_hypothesis_id: problemHypothesisIdSchema.parse(hypothesisId),
       };
       const result = writeArtifact(root, kind, fm, title);
       if (result.isErr()) {
@@ -82,7 +87,6 @@ export async function runNew(
       const fm: HypothesisFrontmatter = {
         id: problemHypothesisIdSchema.parse(id),
         status: "proposed",
-        target_metric_ids: options.metric ? [metricIdSchema.parse(options.metric)] : [],
       };
       const result = writeArtifact(root, kind, fm, title);
       if (result.isErr()) {
@@ -93,19 +97,18 @@ export async function runNew(
       break;
     }
     case "solution_hypothesis": {
-      const hypothesisId = await resolveProblemHypothesisId(options.hypothesis, root);
-      if (!hypothesisId) {
-        return 1;
-      }
-      const metricId = await resolveMetricId(options.metric, root);
-      if (!metricId) {
-        return 1;
+      const rawMetricIds = options.metric ? options.metric.split(",").map((s) => s.trim()) : [];
+      if (rawMetricIds.length === 0) {
+        const metricId = await resolveMetricId(undefined, root);
+        if (!metricId) {
+          return 1;
+        }
+        rawMetricIds.push(metricId);
       }
       const fm: SolutionHypothesisFrontmatter = {
         id: solutionHypothesisIdSchema.parse(id),
         status: "proposed",
-        problem_hypothesis_id: problemHypothesisIdSchema.parse(hypothesisId),
-        target_metric_id: metricIdSchema.parse(metricId),
+        metric_ids: rawMetricIds.map((mid) => metricIdSchema.parse(mid)),
       };
       const result = writeArtifact(root, kind, fm, title);
       if (result.isErr()) {

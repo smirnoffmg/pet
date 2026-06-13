@@ -34,8 +34,9 @@ describe("nextAutoCommand", () => {
     // After accepting a hypothesis, a SOL is already proposed — next action is accept sol
     const arts = [
       makeArtifact("hypothesis", "PROB-0001", "accepted"),
+      makeArtifact("metric", "MET-0001", "accepted", { problem_hypothesis_id: "PROB-0001" }),
       makeArtifact("solution_hypothesis", "SOL-0001", "proposed", {
-        problem_hypothesis_id: "PROB-0001",
+        metric_ids: ["MET-0001"],
       }),
     ];
     // next action will be "pet accept solution-hypothesis SOL-0001"
@@ -65,8 +66,9 @@ describe("nextAutoCommand", () => {
     // Accepted hypothesis that already has an accepted SOL — no discover needed
     const arts = [
       makeArtifact("hypothesis", "PROB-0001", "accepted"),
+      makeArtifact("metric", "MET-0001", "accepted", { problem_hypothesis_id: "PROB-0001" }),
       makeArtifact("solution_hypothesis", "SOL-0001", "accepted", {
-        problem_hypothesis_id: "PROB-0001",
+        metric_ids: ["MET-0001"],
       }),
       {
         kind: "feature" as ParsedArtifact["kind"],

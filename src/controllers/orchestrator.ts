@@ -2,6 +2,7 @@ import type { ArtifactSnapshot, SubagentCommand } from "@/agents/types.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { HypothesisFrontmatter } from "@/schemas/hypothesis.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
+import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import {
   featureBodyIsScaffold,
   evidenceIsEmpty,
@@ -12,6 +13,7 @@ import {
 import { hasTasksForFeature } from "./snapshot.js";
 import {
   featureIdSchema,
+  metricIdSchema,
   problemHypothesisIdSchema,
   solutionHypothesisIdSchema,
 } from "@/schemas/ids.js";
@@ -142,7 +144,11 @@ export function reconcileOrchestrator(snapshot: ArtifactSnapshot): OrchestratorR
       if (h.kind !== "hypothesis") return false;
       const fm = h.frontmatter as HypothesisFrontmatter;
       if (fm.status !== "accepted") return false;
-      const active = activeSolutionHypothesesForHypothesis(snapshot.solutionHypotheses, fm.id);
+      const active = activeSolutionHypothesesForHypothesis(
+        snapshot.solutionHypotheses,
+        snapshot.metrics,
+        fm.id,
+      );
       return active.length === 0;
     })
     .sort((a, b) => numericId(a.frontmatter.id) - numericId(b.frontmatter.id));
@@ -152,6 +158,11 @@ export function reconcileOrchestrator(snapshot: ArtifactSnapshot): OrchestratorR
     const h = hypAccepted;
     const fm = h.frontmatter as HypothesisFrontmatter;
     const title = extractTitle(h.body, fm.id);
+    const hypothesisMetrics = (snapshot.metricsByHypothesisId.get(fm.id) ?? []).map((m) => ({
+      metricId: metricIdSchema.parse((m.frontmatter as TargetMetricFrontmatter).id),
+      metricTitle: extractTitle(m.body, (m.frontmatter as TargetMetricFrontmatter).id),
+      metricBody: m.body,
+    }));
     return {
       ok: true,
       command: {
@@ -160,6 +171,7 @@ export function reconcileOrchestrator(snapshot: ArtifactSnapshot): OrchestratorR
           hypothesisId: problemHypothesisIdSchema.parse(fm.id),
           hypothesisTitle: title,
           hypothesisBody: h.body,
+          metrics: hypothesisMetrics,
         },
       },
       idleReasons: [],

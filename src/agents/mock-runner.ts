@@ -67,7 +67,6 @@ export function runMockAnalyst(docRoot: string, brief: AnalystBrief): void {
   const fm: HypothesisFrontmatter = {
     id: problemHypothesisIdSchema.parse(id),
     status: "proposed",
-    target_metric_ids: [],
   };
   const title = `Hypothesis for ${brief.metricTitle}`;
   const result = writeArtifact(docRoot, "hypothesis", fm, title);
@@ -98,36 +97,31 @@ export function runMockSolutionDesigner(docRoot: string, brief: SolutionDesigner
     throw new Error(scan.error.message);
   }
 
-  let resolvedMetricId = brief.metricId;
-  if (!resolvedMetricId) {
-    const existingMetric = scan.value.find((a) => a.kind === "metric");
-    if (existingMetric) {
-      resolvedMetricId = metricIdSchema.parse(existingMetric.frontmatter.id);
-    } else {
-      const newMetricId = allocateNextId("metric", scan.value);
-      const metricFm: TargetMetricFrontmatter = {
-        id: metricIdSchema.parse(newMetricId),
-        status: "proposed",
-      };
-      const metricResult = writeArtifact(
-        docRoot,
-        "metric",
-        metricFm,
-        `Metric for ${brief.hypothesisTitle}`,
-      );
-      if (metricResult.isErr()) {
-        throw new Error(metricResult.error.message);
-      }
-      resolvedMetricId = metricIdSchema.parse(newMetricId);
+  let metricIds = brief.metrics.map((m) => m.metricId);
+  if (metricIds.length === 0) {
+    const newMetricId = allocateNextId("metric", scan.value);
+    const metricFm: TargetMetricFrontmatter = {
+      id: metricIdSchema.parse(newMetricId),
+      status: "proposed",
+      problem_hypothesis_id: brief.hypothesisId,
+    };
+    const metricResult = writeArtifact(
+      docRoot,
+      "metric",
+      metricFm,
+      `Metric for ${brief.hypothesisTitle}`,
+    );
+    if (metricResult.isErr()) {
+      throw new Error(metricResult.error.message);
     }
+    metricIds = [metricIdSchema.parse(newMetricId)];
   }
 
   const id = allocateNextId("solution_hypothesis", scan.value);
   const fm: SolutionHypothesisFrontmatter = {
     id: solutionHypothesisIdSchema.parse(id),
     status: "proposed",
-    problem_hypothesis_id: problemHypothesisIdSchema.parse(brief.hypothesisId),
-    target_metric_id: resolvedMetricId,
+    metric_ids: metricIds,
   };
   const title = `Solution for ${brief.hypothesisTitle}`;
   const result = writeArtifact(docRoot, "solution_hypothesis", fm, title);

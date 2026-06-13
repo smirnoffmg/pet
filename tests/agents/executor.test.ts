@@ -29,14 +29,17 @@ describe("executeCommands mock", () => {
 
     fs.writeFileSync(
       path.join(fixtureRoot, "product/01-metrics/0001-m.md"),
-      matter.stringify("# M\n", { id: "MET-0001", status: "accepted" }),
+      matter.stringify("# M\n", {
+        id: "MET-0001",
+        status: "accepted",
+        problem_hypothesis_id: "PROB-0001",
+      }),
     );
     fs.writeFileSync(
       path.join(fixtureRoot, "product/00-problem-hypotheses/0001-h.md"),
       matter.stringify("# H\n", {
         id: "PROB-0001",
         status: "accepted",
-        target_metric_ids: ["MET-0001"],
       }),
     );
     fs.writeFileSync(

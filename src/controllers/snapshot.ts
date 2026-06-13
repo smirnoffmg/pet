@@ -77,6 +77,15 @@ export function loadSnapshot(docRoot: string): ArtifactSnapshot | null {
     qaPlansByFeatureId.set(fm.feature_id, list);
   }
 
+  const metricsByHypothesisId = new Map<string, ParsedArtifact[]>();
+  for (const m of metrics) {
+    const fm = m.frontmatter as TargetMetricFrontmatter;
+    if (!("problem_hypothesis_id" in fm)) continue;
+    const list = metricsByHypothesisId.get(fm.problem_hypothesis_id) ?? [];
+    list.push(m);
+    metricsByHypothesisId.set(fm.problem_hypothesis_id, list);
+  }
+
   return {
     metrics,
     hypotheses,
@@ -91,6 +100,7 @@ export function loadSnapshot(docRoot: string): ArtifactSnapshot | null {
     byFeatureId,
     tasksByFeatureId,
     byReleaseId,
+    metricsByHypothesisId,
   };
 }
 

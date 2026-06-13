@@ -9,34 +9,34 @@ import {
 } from "@/schemas/ids.js";
 
 describe("validateForeignKeys", () => {
-  it("detects dangling hypothesis target_metric_ids entry", () => {
-    const hypothesis: ParsedArtifact = {
-      kind: "hypothesis",
-      filePath: "/doc/product/00-problem-hypotheses/0001-x.md",
-      relativePath: "product/00-problem-hypotheses/0001-x.md",
+  it("detects dangling metric problem_hypothesis_id", () => {
+    const metric: ParsedArtifact = {
+      kind: "metric",
+      filePath: "/doc/product/01-metrics/0001-x.md",
+      relativePath: "product/01-metrics/0001-x.md",
       frontmatter: {
-        id: problemHypothesisIdSchema.parse("PROB-0001"),
+        id: metricIdSchema.parse("MET-0001"),
         status: "proposed",
-        target_metric_ids: [metricIdSchema.parse("MET-9999")],
+        problem_hypothesis_id: problemHypothesisIdSchema.parse("PROB-9999"),
       },
       body: "",
     };
     const index = buildIndex([]);
-    const report = validateForeignKeys([hypothesis], index);
+    const report = validateForeignKeys([metric], index);
     expect(report.ok).toBe(false);
     expect(report.issues[0]?.code).toBe("fk");
+    expect(report.issues[0]?.message).toMatch(/problem_hypothesis_id/);
   });
 
-  it("detects dangling solution_hypothesis target_metric_id", () => {
-    const sol: ParsedArtifact = {
-      kind: "solution_hypothesis",
-      filePath: "/doc/product/02-solution-hypotheses/0001-x.md",
-      relativePath: "product/02-solution-hypotheses/0001-x.md",
+  it("detects dangling solution_hypothesis metric_ids entry", () => {
+    const metric: ParsedArtifact = {
+      kind: "metric",
+      filePath: "/doc/product/01-metrics/0001-x.md",
+      relativePath: "product/01-metrics/0001-x.md",
       frontmatter: {
-        id: solutionHypothesisIdSchema.parse("SOL-0001"),
+        id: metricIdSchema.parse("MET-0001"),
         status: "proposed",
         problem_hypothesis_id: problemHypothesisIdSchema.parse("PROB-0001"),
-        target_metric_id: metricIdSchema.parse("MET-9999"),
       },
       body: "",
     };
@@ -47,14 +47,24 @@ describe("validateForeignKeys", () => {
       frontmatter: {
         id: problemHypothesisIdSchema.parse("PROB-0001"),
         status: "accepted",
-        target_metric_ids: [],
       },
       body: "",
     };
-    const index = buildIndex([hyp]);
+    const sol: ParsedArtifact = {
+      kind: "solution_hypothesis",
+      filePath: "/doc/product/02-solution-hypotheses/0001-x.md",
+      relativePath: "product/02-solution-hypotheses/0001-x.md",
+      frontmatter: {
+        id: solutionHypothesisIdSchema.parse("SOL-0001"),
+        status: "proposed",
+        metric_ids: [metricIdSchema.parse("MET-9999")],
+      },
+      body: "",
+    };
+    const index = buildIndex([hyp, metric]);
     const report = validateForeignKeys([sol], index);
     expect(report.ok).toBe(false);
     expect(report.issues[0]?.code).toBe("fk");
-    expect(report.issues[0]?.message).toMatch(/target_metric_id/);
+    expect(report.issues[0]?.message).toMatch(/metric_ids/);
   });
 });

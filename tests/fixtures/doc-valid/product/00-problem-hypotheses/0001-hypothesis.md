@@ -2,7 +2,8 @@
 id: PROB-0001
 status: proposed
 ---
-# Hypothesis for Discovery metric
+
+# Hypothesis
 
 ## Context
 

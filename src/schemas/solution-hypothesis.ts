@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { solutionHypothesisIdSchema, problemHypothesisIdSchema, metricIdSchema } from "./ids.js";
+import { solutionHypothesisIdSchema, metricIdSchema } from "./ids.js";
 import { supersessionFields, withSupersessionRefine } from "./base.js";
 
 const solutionHypothesisStatusSchema = z.enum(["proposed", "accepted", "rejected", "superseded"]);
@@ -8,8 +8,7 @@ export const solutionHypothesisFrontmatterSchema = withSupersessionRefine(
   z.object({
     id: solutionHypothesisIdSchema,
     status: solutionHypothesisStatusSchema,
-    problem_hypothesis_id: problemHypothesisIdSchema,
-    target_metric_id: metricIdSchema,
+    metric_ids: z.array(metricIdSchema).min(1),
     rejection_rationale: z.string().optional(),
     ...supersessionFields,
   }),

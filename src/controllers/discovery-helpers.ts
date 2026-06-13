@@ -18,17 +18,21 @@ export function evidenceIsEmpty(body: string): boolean {
 
 export function activeSolutionHypothesesForHypothesis(
   solutionHypotheses: ParsedArtifact[],
+  metrics: ParsedArtifact[],
   hypothesisId: string,
 ): ParsedArtifact[] {
+  const metricIds = new Set<string>(
+    metrics
+      .filter(
+        (m) => (m.frontmatter as TargetMetricFrontmatter).problem_hypothesis_id === hypothesisId,
+      )
+      .map((m) => m.frontmatter.id as string),
+  );
   return solutionHypotheses.filter((sh) => {
-    if (sh.kind !== "solution_hypothesis") {
-      return false;
-    }
+    if (sh.kind !== "solution_hypothesis") return false;
     const fm = sh.frontmatter as SolutionHypothesisFrontmatter;
-    if (fm.problem_hypothesis_id !== hypothesisId) {
-      return false;
-    }
-    return fm.status !== "superseded";
+    if (fm.status === "superseded") return false;
+    return (fm.metric_ids as string[]).some((mid) => metricIds.has(mid));
   });
 }
 

@@ -22,8 +22,9 @@ Each hypothesis must be **falsifiable** — you must be able to state a plausibl
 
 ## Rules
 
-- Use `status: proposed` only — never accept a hypothesis.
-- The FK `target_metric_id` belongs on solution hypotheses (SOL-), not on problem hypotheses (PROB-) — leave it out of PROB- frontmatter.
-- Filename and id must follow `NNNN-kebab-title.md` / `PROB-NNNN` conventions.
+- Use `status: proposed` only — never accept a hypothesis or metric.
+- Problem hypotheses (`PROB-`) carry **no FK fields** — they are first-class root objects.
+- Each metric you create must include `problem_hypothesis_id: PROB-NNNN` pointing at the hypothesis it measures.
+- Filename and id must follow `NNNN-kebab-title.md` / `PROB-NNNN` (and `MET-NNNN` for metrics) conventions.
 
-Summarize the hypothesis IDs you created.
+Summarize the hypothesis and metric IDs you created.

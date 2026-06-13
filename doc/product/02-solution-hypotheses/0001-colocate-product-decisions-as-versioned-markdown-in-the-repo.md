@@ -1,8 +1,8 @@
 ---
 id: SOL-0001
 status: accepted
-problem_hypothesis_id: PROB-0001
-target_metric_id: MET-0001
+metric_ids:
+  - MET-0001
 ---
 
 # Colocate product decisions as versioned Markdown in the repo

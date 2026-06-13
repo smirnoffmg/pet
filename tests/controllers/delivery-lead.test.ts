@@ -38,6 +38,7 @@ function emptySnapshot(features: ParsedArtifact[]): ArtifactSnapshot {
     byFeatureId: new Map(features.map((f) => [f.frontmatter.id, f])),
     tasksByFeatureId: new Map(),
     byReleaseId: new Map(),
+    metricsByHypothesisId: new Map(),
   };
 }
 
