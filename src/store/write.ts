@@ -19,7 +19,9 @@ export function writeArtifact(
   const dir = dirForKind(docRoot, kind);
   fs.mkdirSync(dir, { recursive: true });
 
-  const suffix = numericSuffixFromId(frontmatter.id);
+  const suffixResult = numericSuffixFromId(frontmatter.id);
+  if (suffixResult.isErr()) return err(suffixResult.error);
+  const suffix = suffixResult.value;
   const filename = buildFilename(suffix, title);
   const filePath = path.join(dir, filename);
 

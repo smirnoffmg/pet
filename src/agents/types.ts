@@ -14,12 +14,18 @@ export const architectBriefSchema = z.object({
   featureId: featureIdSchema,
   featureTitle: z.string().min(1),
   featureBody: z.string(),
+  solutionHypothesisId: solutionHypothesisIdSchema.optional(),
+  solutionHypothesisTitle: z.string().optional(),
+  solutionHypothesisBody: z.string().optional(),
 });
 
 export const techLeadBriefSchema = z.object({
   featureId: featureIdSchema,
   featureTitle: z.string().min(1),
   featureBody: z.string(),
+  solutionHypothesisId: solutionHypothesisIdSchema.optional(),
+  solutionHypothesisTitle: z.string().optional(),
+  solutionHypothesisBody: z.string().optional(),
 });
 
 export type ArchitectBrief = z.infer<typeof architectBriefSchema>;
@@ -61,6 +67,9 @@ export const featureDesignerBriefSchema = z.object({
   solutionHypothesisId: solutionHypothesisIdSchema,
   solutionHypothesisTitle: z.string().min(1),
   solutionHypothesisBody: z.string(),
+  problemHypothesisId: problemHypothesisIdSchema.optional(),
+  problemHypothesisTitle: z.string().optional(),
+  problemHypothesisBody: z.string().optional(),
 });
 
 export const designerEnrichBriefSchema = z.object({
@@ -106,14 +115,16 @@ export const qaBriefSchema = z.object({
   featureId: featureIdSchema,
   featureTitle: z.string().min(1),
   featureBody: z.string(),
-  taskIds: z.array(taskIdSchema),
+  tasks: z.array(z.object({ taskId: taskIdSchema, taskTitle: z.string(), taskBody: z.string() })),
 });
 
 export const devOpsBriefSchema = z.object({
   releaseId: releaseIdSchema,
   releaseTitle: z.string().min(1),
   releaseBody: z.string(),
-  featureIds: z.array(featureIdSchema),
+  features: z.array(
+    z.object({ featureId: featureIdSchema, featureTitle: z.string(), featureBody: z.string() }),
+  ),
 });
 
 export type DevBrief = z.infer<typeof devBriefSchema>;

@@ -22,7 +22,7 @@ describe("loadMcpTools (real memory server)", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pet-mcp-integration-"));
     makeMemoryConfig(dir);
 
-    const { tools, disconnect } = await loadMcpTools("researcher", dir);
+    const { tools, disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
     try {
       expect(tools.length).toBeGreaterThan(0);
       const names = tools.map((t) => t.name);
@@ -38,7 +38,7 @@ describe("loadMcpTools (real memory server)", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pet-mcp-integration-"));
     makeMemoryConfig(dir);
     // qa has no allow-list — server should not be spawned
-    const { tools, disconnect } = await loadMcpTools("qa", dir);
+    const { tools, disconnect } = (await loadMcpTools("qa", dir))._unsafeUnwrap();
     expect(tools).toHaveLength(0);
     await disconnect();
   }, 5000);
@@ -57,7 +57,7 @@ describe("loadMcpTools (real memory server)", () => {
     );
     const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["memory"]);
     try {
-      const { tools, disconnect } = await loadMcpTools("researcher", dir);
+      const { tools, disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
       expect(tools.length).toBeGreaterThan(0);
       await disconnect();
     } finally {

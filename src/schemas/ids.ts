@@ -1,3 +1,4 @@
+import { ok, err, type Result } from "neverthrow";
 import { z } from "zod";
 
 const idPattern = (prefix: string) => new RegExp(`^${prefix}-\\d{4}$`);
@@ -73,10 +74,10 @@ export function kindFromId(id: string): ArtifactKind | null {
   }
 }
 
-export function numericSuffixFromId(id: string): number {
+export function numericSuffixFromId(id: string): Result<number, { message: string }> {
   const match = /-(\d{4})$/.exec(id);
   if (!match?.[1]) {
-    throw new Error(`Invalid artifact id: ${id}`);
+    return err({ message: `Invalid artifact id: ${id}` });
   }
-  return Number.parseInt(match[1], 10);
+  return ok(Number.parseInt(match[1], 10));
 }

@@ -1,6 +1,7 @@
 import type { ArtifactSnapshot, SubagentCommand } from "@/agents/types.js";
 import type { ReleaseFrontmatter } from "@/schemas/release.js";
 import { releaseIdSchema, featureIdSchema } from "@/schemas/ids.js";
+import { extractTitle } from "./discovery-helpers.js";
 import { releaseBodyHasDeploymentChecklist } from "./snapshot.js";
 
 export type ReconcileResult =
@@ -8,7 +9,7 @@ export type ReconcileResult =
   | { ok: false; reason: string };
 
 export function reconcileRelease(
-  _snapshot: ArtifactSnapshot,
+  snapshot: ArtifactSnapshot,
   releaseId: string,
   releaseTitle: string,
   releaseBody: string,
@@ -30,7 +31,17 @@ export function reconcileRelease(
     return { ok: false, reason: `Invalid release ID: ${releaseId}` };
   }
 
-  const featureIds = frontmatter.feature_ids.map((id) => featureIdSchema.parse(id));
+  const features = frontmatter.feature_ids.flatMap((id) => {
+    const artifact = snapshot.byFeatureId.get(id);
+    if (!artifact) return [];
+    return [
+      {
+        featureId: featureIdSchema.parse(id),
+        featureTitle: extractTitle(artifact.body, id),
+        featureBody: artifact.body,
+      },
+    ];
+  });
 
   return {
     ok: true,
@@ -41,7 +52,7 @@ export function reconcileRelease(
           releaseId: parsedReleaseId.data,
           releaseTitle,
           releaseBody,
-          featureIds,
+          features,
         },
       },
     ],

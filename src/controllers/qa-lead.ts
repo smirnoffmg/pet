@@ -2,6 +2,7 @@ import type { ArtifactSnapshot, SubagentCommand } from "@/agents/types.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
 import { featureIdSchema, taskIdSchema } from "@/schemas/ids.js";
+import { extractTitle } from "./discovery-helpers.js";
 import { hasQaPlanForFeature } from "./snapshot.js";
 
 export type ReconcileResult =
@@ -22,8 +23,8 @@ export function reconcileQa(
     };
   }
 
-  const tasks = snapshot.tasksByFeatureId.get(featureId) ?? [];
-  const doneTasks = tasks.filter((t) => (t.frontmatter as DevTaskFrontmatter).status === "done");
+  const allTasks = snapshot.tasksByFeatureId.get(featureId) ?? [];
+  const doneTasks = allTasks.filter((t) => (t.frontmatter as DevTaskFrontmatter).status === "done");
   if (doneTasks.length === 0) {
     return {
       ok: false,
@@ -43,7 +44,11 @@ export function reconcileQa(
     return { ok: false, reason: `Invalid feature ID: ${featureId}` };
   }
 
-  const taskIds = doneTasks.map((t) => taskIdSchema.parse(t.frontmatter.id));
+  const tasks = doneTasks.map((t) => ({
+    taskId: taskIdSchema.parse(t.frontmatter.id),
+    taskTitle: extractTitle(t.body, t.frontmatter.id),
+    taskBody: t.body,
+  }));
 
   return {
     ok: true,
@@ -54,7 +59,7 @@ export function reconcileQa(
           featureId: parsedFeatureId.data,
           featureTitle,
           featureBody,
-          taskIds,
+          tasks,
         },
       },
     ],

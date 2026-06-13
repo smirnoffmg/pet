@@ -9,7 +9,7 @@ export function allocateNextId(kind: ArtifactKind, artifacts: ParsedArtifact[]):
     if (artifact.kind !== kind) {
       continue;
     }
-    const suffix = numericSuffixFromId(artifact.frontmatter.id);
+    const suffix = numericSuffixFromId(artifact.frontmatter.id).unwrapOr(0);
     if (suffix > max) {
       max = suffix;
     }

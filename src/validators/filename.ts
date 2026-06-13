@@ -22,7 +22,8 @@ export function validateFilenames(artifacts: ParsedArtifact[]): ValidationReport
     }
 
     const fileNum = numericSuffixFromFilename(basename);
-    const idNum = numericSuffixFromId(artifact.frontmatter.id);
+    const idNumResult = numericSuffixFromId(artifact.frontmatter.id);
+    const idNum = idNumResult.isOk() ? idNumResult.value : null;
     if (fileNum !== idNum) {
       issues.push(
         issue(

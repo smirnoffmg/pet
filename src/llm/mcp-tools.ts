@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { ok, err, type Result } from "neverthrow";
 import { z } from "zod";
 import { MultiServerMCPClient, type ClientConfig } from "@langchain/mcp-adapters";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { McpConfigError } from "@/errors/index.js";
 import { mcpServersForRole, type AgentRole } from "@/agents/path-permissions.js";
 
 const stdioServerSchema = z.object({
@@ -41,32 +43,35 @@ const EMPTY: McpToolsResult = {
   disconnect: async () => {},
 };
 
-export async function loadMcpTools(role: AgentRole, repoRoot: string): Promise<McpToolsResult> {
+export async function loadMcpTools(
+  role: AgentRole,
+  repoRoot: string,
+): Promise<Result<McpToolsResult, McpConfigError>> {
   const allowedNames = mcpServersForRole(role);
   if (allowedNames.length === 0) {
-    return EMPTY;
+    return ok(EMPTY);
   }
 
   const configPath = path.join(repoRoot, "pet.mcp.json");
   if (!fs.existsSync(configPath)) {
-    return EMPTY;
+    return ok(EMPTY);
   }
 
   let raw: unknown;
   try {
     raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
   } catch {
-    throw new Error(`Failed to parse pet.mcp.json: invalid JSON`);
+    return err(new McpConfigError(`Failed to parse pet.mcp.json: invalid JSON`));
   }
 
   const parsed = mcpConfigSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new Error(`pet.mcp.json is invalid: ${parsed.error.message}`);
+    return err(new McpConfigError(`pet.mcp.json is invalid: ${parsed.error.message}`));
   }
 
   const allowed = parsed.data.servers.filter((s) => allowedNames.includes(s.name));
   if (allowed.length === 0) {
-    return EMPTY;
+    return ok(EMPTY);
   }
 
   const mcpServers: Record<string, unknown> = {};
@@ -89,10 +94,10 @@ export async function loadMcpTools(role: AgentRole, repoRoot: string): Promise<M
   const client = new MultiServerMCPClient({ mcpServers } as ClientConfig);
   const tools = await client.getTools();
 
-  return {
+  return ok({
     tools,
     disconnect: () => client.close(),
-  };
+  });
 }
 
 export function validateMcpConfig(repoRoot: string): string[] {

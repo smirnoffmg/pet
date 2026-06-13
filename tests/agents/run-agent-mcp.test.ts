@@ -18,6 +18,7 @@ vi.mock("@/llm/provider-factory.js", () => ({
   createModel: vi.fn().mockResolvedValue({}),
   resolveModelId: vi.fn().mockReturnValue("mock-model"),
   resolveProvider: vi.fn().mockReturnValue("mock"),
+  requiresExplicitToolGuidance: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("@/agents/load-prompt.js", () => ({

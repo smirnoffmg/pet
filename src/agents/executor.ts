@@ -55,9 +55,9 @@ export function formatCommand(cmd: SubagentCommand): string {
     case "spawn_dev":
       return `spawn Dev for ${cmd.brief.taskId} "${trunc(cmd.brief.taskTitle)}" (${cmd.brief.featureId})`;
     case "spawn_qa":
-      return `spawn QA for ${cmd.brief.featureId} "${trunc(cmd.brief.featureTitle)}" [${cmd.brief.taskIds.join(", ")}]`;
+      return `spawn QA for ${cmd.brief.featureId} "${trunc(cmd.brief.featureTitle)}" [${cmd.brief.tasks.map((t) => t.taskId).join(", ")}]`;
     case "spawn_devops":
-      return `spawn DevOps for ${cmd.brief.releaseId} "${trunc(cmd.brief.releaseTitle)}" [${cmd.brief.featureIds.join(", ")}]`;
+      return `spawn DevOps for ${cmd.brief.releaseId} "${trunc(cmd.brief.releaseTitle)}" [${cmd.brief.features.map((f) => f.featureId).join(", ")}]`;
   }
 }
 

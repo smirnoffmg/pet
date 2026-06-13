@@ -63,7 +63,7 @@
     "@modelcontextprotocol/server-memory": "^2026.1.26",
     "@types/node": "^22.13.10",
     "@types/react": "^19.2.15",
-    "esbuild": "^0.25.1",
+    "esbuild": "^0.28.1",
     "eslint": "^9.22.0",
     "globals": "^16.0.0",
     "husky": "^9.1.7",

@@ -40,8 +40,9 @@ describe("loadMcpTools", () => {
     const dir = withoutMcpConfig();
     // qa has an empty allow-list
     const result = await loadMcpTools("qa", dir);
-    expect(result.tools).toHaveLength(0);
-    await result.disconnect();
+    const { tools, disconnect } = result._unsafeUnwrap();
+    expect(tools).toHaveLength(0);
+    await disconnect();
   });
 
   it("returns empty tools when pet.mcp.json is absent even if role has allow-list", async () => {
@@ -49,16 +50,19 @@ describe("loadMcpTools", () => {
     const { MultiServerMCPClient } = await import("@langchain/mcp-adapters");
     // researcher has ["memory"] but no config file → early exit
     const result = await loadMcpTools("researcher", dir);
-    expect(result.tools).toHaveLength(0);
+    const { tools, disconnect } = result._unsafeUnwrap();
+    expect(tools).toHaveLength(0);
     expect(MultiServerMCPClient).not.toHaveBeenCalled();
-    await result.disconnect();
+    await disconnect();
   });
 
-  it("throws on malformed JSON in pet.mcp.json when role has allow-list", async () => {
+  it("returns Err on malformed JSON in pet.mcp.json when role has allow-list", async () => {
     const dir = withMcpConfig(`{ "servers": [`);
     const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["web-search"]);
     try {
-      await expect(loadMcpTools("researcher", dir)).rejects.toThrow(/invalid JSON/i);
+      const result = await loadMcpTools("researcher", dir);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toMatch(/invalid JSON/i);
     } finally {
       spy.mockRestore();
     }
@@ -82,7 +86,7 @@ describe("loadMcpTools", () => {
     const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["my-server"]);
     const { MultiServerMCPClient } = await import("@langchain/mcp-adapters");
     try {
-      const { disconnect } = await loadMcpTools("researcher", dir);
+      const { disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
       expect(MultiServerMCPClient).toHaveBeenCalledOnce();
       const constructorArg = (MultiServerMCPClient as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
       const serverEntry = (constructorArg as { mcpServers: Record<string, unknown> }).mcpServers[
@@ -111,7 +115,7 @@ describe("loadMcpTools", () => {
     const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["remote"]);
     const { MultiServerMCPClient } = await import("@langchain/mcp-adapters");
     try {
-      const { disconnect } = await loadMcpTools("researcher", dir);
+      const { disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
       expect(MultiServerMCPClient).toHaveBeenCalledOnce();
       const constructorArg = (MultiServerMCPClient as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
       const serverEntry = (constructorArg as { mcpServers: Record<string, unknown> }).mcpServers[

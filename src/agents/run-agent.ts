@@ -1,7 +1,12 @@
 import path from "node:path";
 import { createDeepAgent, FilesystemBackend } from "deepagents";
 import { loadConfig } from "@/config.js";
-import { createModel, resolveModelId, resolveProvider } from "@/llm/provider-factory.js";
+import {
+  createModel,
+  resolveModelId,
+  resolveProvider,
+  requiresExplicitToolGuidance,
+} from "@/llm/provider-factory.js";
 import { loadMcpTools } from "@/llm/mcp-tools.js";
 import type { PdtLogger } from "@/log.js";
 import { createLogger } from "@/log.js";
@@ -52,7 +57,11 @@ export async function runLiveAgent(
   logger.verbose(`Brief target: ${briefTargetId(role, brief, commandKind)}`);
 
   const repoRoot = path.dirname(docRoot);
-  const { tools: mcpTools, disconnect } = await loadMcpTools(role, repoRoot);
+  const mcpResult = await loadMcpTools(role, repoRoot);
+  const { tools: mcpTools, disconnect } = mcpResult.isErr()
+    ? (logger.info(`MCP config error: ${mcpResult.error.message}`),
+      { tools: [], disconnect: async () => {} })
+    : mcpResult.value;
 
   const backend = new FilesystemBackend({
     rootDir: docRoot,
@@ -267,7 +276,7 @@ function formatMessage(
   commandKind?: SubagentCommand["kind"],
 ): string {
   const base = buildUserMessage(role, brief, commandKind);
-  if (!base || resolveProvider() !== "ollama") return base;
+  if (!base || !requiresExplicitToolGuidance()) return base;
   const dirHint = ollamaDirHint(role, commandKind);
   return base + OLLAMA_TOOL_HINT + (dirHint ? `\n${dirHint}` : "");
 }
@@ -294,22 +303,38 @@ Fill Context, Decision, Acceptance criteria, and Consequences with substantive c
 
   if (commandKind === "spawn_solution_designer") {
     const b = brief as SolutionDesignerBrief;
-    return `Draft proposed solution hypothesis(es) for accepted problem hypothesis ${b.hypothesisId}: ${b.hypothesisTitle}\n\n${b.hypothesisBody}`;
+    const metricsSection =
+      b.metrics.length > 0
+        ? `\n\n## Linked metrics\n\n${b.metrics.map((m) => `### ${m.metricId}: ${m.metricTitle}\n\n${m.metricBody}`).join("\n\n---\n\n")}`
+        : "";
+    return `Draft proposed solution hypothesis(es) for accepted problem hypothesis ${b.hypothesisId}: ${b.hypothesisTitle}\n\n${b.hypothesisBody}${metricsSection}`;
   }
 
   if (commandKind === "spawn_feature_designer") {
     const b = brief as FeatureDesignerBrief;
-    return `Draft proposed feature(s) for accepted solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}`;
+    const probSection =
+      b.problemHypothesisId != null
+        ? `\n\n## Upstream problem hypothesis ${b.problemHypothesisId}: ${b.problemHypothesisTitle}\n\n${b.problemHypothesisBody}`
+        : "";
+    return `Draft proposed feature(s) for accepted solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}${probSection}`;
   }
 
   switch (role) {
     case "architect": {
       const b = brief as ArchitectBrief;
-      return `Review feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}\n\nEither create an ADR in /adr/ using Michael Nygard format (# N. Title, Date:, ## Status, ## Context, ## Decision, ## Consequences — no YAML frontmatter) or set architectural_review_status to cleared on the feature.`;
+      const shSection =
+        b.solutionHypothesisId != null
+          ? `\n\n## Linked solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}`
+          : "";
+      return `Review feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}${shSection}\n\nEither create an ADR in /adr/ using Michael Nygard format (# N. Title, Date:, ## Status, ## Context, ## Decision, ## Consequences — no YAML frontmatter) or set architectural_review_status to cleared on the feature.`;
     }
     case "techlead": {
       const b = brief as TechLeadBrief;
-      return `Decompose feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}\n\nCreate DevTask files under /product/04-tasks/.`;
+      const shSection =
+        b.solutionHypothesisId != null
+          ? `\n\n## Linked solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}`
+          : "";
+      return `Decompose feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}${shSection}\n\nCreate DevTask files under /product/04-tasks/.`;
     }
     case "analyst": {
       const b = brief as AnalystBrief;
@@ -326,7 +351,11 @@ Fill Context, Decision, Acceptance criteria, and Consequences with substantive c
     }
     case "designer": {
       const b = brief as FeatureDesignerBrief;
-      return `Draft proposed feature(s) for accepted solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}`;
+      const probSection =
+        b.problemHypothesisId != null
+          ? `\n\n## Upstream problem hypothesis ${b.problemHypothesisId}: ${b.problemHypothesisTitle}\n\n${b.problemHypothesisBody}`
+          : "";
+      return `Draft proposed feature(s) for accepted solution hypothesis ${b.solutionHypothesisId}: ${b.solutionHypothesisTitle}\n\n${b.solutionHypothesisBody}${probSection}`;
     }
     case "dev": {
       const b = brief as DevBrief;
@@ -334,11 +363,19 @@ Fill Context, Decision, Acceptance criteria, and Consequences with substantive c
     }
     case "qa": {
       const b = brief as QaBrief;
-      return `Create a QA plan for feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}\n\nCompleted tasks: ${b.taskIds.join(", ")}`;
+      const tasksSection =
+        b.tasks.length > 0
+          ? `\n\n## Completed tasks\n\n${b.tasks.map((t) => `### ${t.taskId}: ${t.taskTitle}\n\n${t.taskBody}`).join("\n\n---\n\n")}`
+          : "\n\nCompleted tasks: (none)";
+      return `Create a QA plan for feature ${b.featureId}: ${b.featureTitle}\n\n${b.featureBody}${tasksSection}`;
     }
     case "devops": {
       const b = brief as DevOpsBrief;
-      return `Add a deployment checklist and rollback plan to release ${b.releaseId}: ${b.releaseTitle}\n\n${b.releaseBody}\n\nFeatures in this release: ${b.featureIds.join(", ")}`;
+      const featuresSection =
+        b.features.length > 0
+          ? `\n\n## Features in this release\n\n${b.features.map((f) => `### ${f.featureId}: ${f.featureTitle}\n\n${f.featureBody}`).join("\n\n---\n\n")}`
+          : "\n\nFeatures in this release: (none)";
+      return `Add a deployment checklist and rollback plan to release ${b.releaseId}: ${b.releaseTitle}\n\n${b.releaseBody}${featuresSection}`;
     }
     case "orchestrator":
       return "";

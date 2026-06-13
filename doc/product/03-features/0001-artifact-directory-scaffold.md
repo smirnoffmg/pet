@@ -2,7 +2,6 @@
 id: FEAT-0001
 status: proposed
 solution_hypothesis_id: SOL-0001
-target_metric_id: MET-0001
 architectural_review_status: pending
 ---
 

@@ -2,7 +2,6 @@
 id: FEAT-0002
 status: proposed
 solution_hypothesis_id: SOL-0001
-target_metric_id: MET-0001
 architectural_review_status: pending
 ---
 
@@ -36,14 +35,14 @@ cross-reference fields are required vs. optional.
 
 ### Schema summary
 
-| Artifact            | Required fields                                                                     | Status values                                      |
-| ------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Problem hypothesis  | `id` (PROB-NNNN), `status`                                                          | `draft`, `accepted`, `rejected`                    |
-| Metric              | `id` (MET-NNNN), `status`                                                           | `draft`, `active`, `deprecated`                    |
-| Solution hypothesis | `id` (SOL-NNNN), `status`, `problem_hypothesis_id`                                  | `draft`, `accepted`, `rejected`                    |
-| Feature             | `id` (FEAT-NNNN), `status`, `solution_hypothesis_id`, `architectural_review_status` | `proposed`, `accepted`, `rejected`, `delivered`    |
-| Task                | `id` (TASK-NNNN), `status`, `feature_id`                                            | `pending`, `in_progress`, `done`, `cancelled`      |
-| ADR                 | `id` (ADR-NNNN), `status`                                                           | `proposed`, `accepted`, `superseded`, `deprecated` |
+| Artifact            | Required fields                                                                     | Status values                                                    |
+| ------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Problem hypothesis  | `id` (PROB-NNNN), `status`                                                          | `proposed`, `accepted`, `validated`, `invalidated`, `superseded` |
+| Metric              | `id` (MET-NNNN), `status`, `problem_hypothesis_id`                                  | `proposed`, `accepted`, `superseded`                             |
+| Solution hypothesis | `id` (SOL-NNNN), `status`, `metric_ids[]`                                           | `proposed`, `accepted`, `rejected`, `superseded`                 |
+| Feature             | `id` (FEAT-NNNN), `status`, `solution_hypothesis_id`, `architectural_review_status` | `proposed`, `accepted`, `released`, `superseded`                 |
+| Task                | `id` (TASK-NNNN), `status`, `feature_id`                                            | `todo`, `in_progress`, `review`, `done`                          |
+| ADR                 | `id` (ADR-NNNN), `status`                                                           | `proposed`, `accepted`, `superseded`, `deprecated`               |
 
 Filename convention: `NNNN-<kebab-case-title>.md` where `NNNN` is the same numeric
 suffix as the `id` field. Mismatch between filename number and `id` number is a

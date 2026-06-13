@@ -1,6 +1,8 @@
 import type { ArtifactSnapshot, SubagentCommand } from "@/agents/types.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
+import { solutionHypothesisIdSchema } from "@/schemas/ids.js";
+import { extractTitle, asSolutionHypothesisFm } from "./discovery-helpers.js";
 import { hasTasksForFeature } from "./snapshot.js";
 
 export type ReconcileResult =
@@ -27,13 +29,26 @@ export function reconcileDelivery(
     return { ok: true, commands: [] };
   }
 
+  const shId = frontmatter.solution_hypothesis_id;
+  const shArtifact = shId ? snapshot.bySolutionHypothesisId.get(shId) : undefined;
+  const shContext =
+    shArtifact != null
+      ? {
+          solutionHypothesisId: solutionHypothesisIdSchema.parse(
+            asSolutionHypothesisFm(shArtifact).id,
+          ),
+          solutionHypothesisTitle: extractTitle(shArtifact.body, shId!),
+          solutionHypothesisBody: shArtifact.body,
+        }
+      : {};
+
   if (review === "pending") {
     return {
       ok: true,
       commands: [
         {
           kind: "spawn_architect",
-          brief: { featureId: frontmatter.id, featureTitle, featureBody },
+          brief: { featureId: frontmatter.id, featureTitle, featureBody, ...shContext },
         },
       ],
     };
@@ -48,7 +63,7 @@ export function reconcileDelivery(
       commands: [
         {
           kind: "spawn_techlead",
-          brief: { featureId: frontmatter.id, featureTitle, featureBody },
+          brief: { featureId: frontmatter.id, featureTitle, featureBody, ...shContext },
         },
       ],
     };

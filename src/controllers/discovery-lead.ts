@@ -10,6 +10,8 @@ import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesi
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import {
   activeSolutionHypothesesForHypothesis,
+  asHypothesisFm,
+  asMetricFm,
   extractTitle,
   featureBodyIsScaffold,
   hasProposedOrAcceptedFeatureForSolutionHypothesis,
@@ -253,6 +255,14 @@ function reconcileForSolutionHypothesis(
   }
 
   const title = extractTitle(sh.body, solutionHypothesisId);
+
+  // Walk SOL → metric_ids[0] → MET → problem_hypothesis_id → PROB to give FeatureDesigner
+  // the full upstream context without requiring filesystem tool calls.
+  const firstMetricId = fm.metric_ids[0];
+  const metricArtifact = firstMetricId ? snapshot.byMetricId.get(firstMetricId) : undefined;
+  const probHypId = metricArtifact ? asMetricFm(metricArtifact).problem_hypothesis_id : undefined;
+  const probHypArtifact = probHypId ? snapshot.byHypothesisId.get(probHypId) : undefined;
+
   return {
     ok: true,
     commands: [
@@ -262,6 +272,13 @@ function reconcileForSolutionHypothesis(
           solutionHypothesisId: solutionHypothesisIdSchema.parse(fm.id),
           solutionHypothesisTitle: title,
           solutionHypothesisBody: sh.body,
+          ...(probHypArtifact != null && {
+            problemHypothesisId: problemHypothesisIdSchema.parse(
+              asHypothesisFm(probHypArtifact).id,
+            ),
+            problemHypothesisTitle: extractTitle(probHypArtifact.body, probHypId!),
+            problemHypothesisBody: probHypArtifact.body,
+          }),
         },
       },
     ],

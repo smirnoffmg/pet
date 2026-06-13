@@ -6,7 +6,7 @@
 
 ## Tech Stack
 
-- **Language:** TypeScript (strict mode), Node.js 20+
+- **Language:** TypeScript (strict mode), Node.js 22+
 - **CLI framework:** Commander.js
 - **UI layer:** Ink (React-based terminal UI) with `@inquirer/prompts`
 - **Agent harness:** `deepagents` npm package

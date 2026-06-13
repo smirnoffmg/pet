@@ -38,6 +38,10 @@ export function resolveProvider(): string {
   return process.env["PET_LLM_PROVIDER"] ?? "anthropic";
 }
 
+export function requiresExplicitToolGuidance(): boolean {
+  return resolveProvider() === "ollama";
+}
+
 export function resolveModelId(): string {
   const provider = resolveProvider() as Provider;
   const override = process.env["PET_LLM_MODEL"];

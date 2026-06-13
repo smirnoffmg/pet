@@ -520,13 +520,15 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       const taskFiles = fs
         .readdirSync(path.join(ctx.productRoot, "tasks"))
         .filter((f) => f.endsWith(".md"));
-      const taskIds = taskFiles
+      const tasks = taskFiles
         .map((f) => {
-          const { frontmatter } = parseArtifact(path.join(ctx.productRoot, "tasks", f));
-          return String(frontmatter["id"] ?? "");
+          const { frontmatter, title, body } = parseArtifact(
+            path.join(ctx.productRoot, "tasks", f),
+          );
+          return { id: String(frontmatter["id"] ?? ""), title, body };
         })
-        .filter((id) => id.startsWith("TASK-"))
-        .map((id) => taskIdSchema.parse(id));
+        .filter((t) => t.id.startsWith("TASK-"))
+        .map((t) => ({ taskId: taskIdSchema.parse(t.id), taskTitle: t.title, taskBody: t.body }));
 
       const before = snapshotFixture(ctx.productRoot);
 
@@ -537,7 +539,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
           featureId: featureIdSchema.parse(featId),
           featureTitle: featTitle,
           featureBody: featBody,
-          taskIds,
+          tasks,
         },
         logger,
         "spawn_qa",
@@ -564,7 +566,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         (fm) => fm["status"] === "accepted",
       );
       expect(featPath, "FEAT- must exist for DevOps step").toBeDefined();
-      const { id: featId } = parseArtifact(featPath!);
+      const { id: featId, title: featTitle, body: featBody } = parseArtifact(featPath!);
 
       // Create a proposed release artifact programmatically
       const releaseResult = writeArtifact(
@@ -591,7 +593,13 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
           releaseId: releaseIdSchema.parse("REL-0001"),
           releaseTitle: relTitle,
           releaseBody: relBody,
-          featureIds: [featureIdSchema.parse(featId)],
+          features: [
+            {
+              featureId: featureIdSchema.parse(featId),
+              featureTitle: featTitle,
+              featureBody: featBody,
+            },
+          ],
         },
         logger,
         "spawn_devops",
