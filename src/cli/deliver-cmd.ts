@@ -5,11 +5,13 @@ import type { ExecuteCallbacks } from "@/agents/executor.js";
 import { renderAgentPanel } from "@/cli/render-agent-panel.js";
 import { estimatePlanCostUsd, confirmCostIfNeeded } from "@/agents/cost.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
+import { scanArtifacts } from "@/store/scan.js";
 import { docRoot, findRepoRoot } from "@/store/repo-root.js";
 import { loadConfig, sessionDir } from "@/config.js";
 import { resolveModelId, resolveProvider } from "@/llm/provider-factory.js";
 import { computeRepoHash } from "@/store/repo-hash.js";
 import { createLogger, ensureSessionLogPath, isVerboseEnv } from "@/log.js";
+import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import fs from "node:fs";
 
 export type DeliverOptions = {
@@ -111,6 +113,19 @@ export async function runDeliver(options: DeliverOptions): Promise<number> {
     if (validation.isErr()) {
       console.error(formatReport(validation.error));
       return 1;
+    }
+    // Guard: delivery agents must not revert the feature's accepted status.
+    const postScan = scanArtifacts(root);
+    if (postScan.isOk()) {
+      const feat = postScan.value.find(
+        (a) => a.kind === "feature" && a.frontmatter.id === options.feature,
+      );
+      if (feat && (feat.frontmatter as FeatureFrontmatter).status !== "accepted") {
+        console.error(
+          `Delivery agent reverted feature ${options.feature} status from "accepted" to "${(feat.frontmatter as FeatureFrontmatter).status}". Aborting — check architect output and re-run.`,
+        );
+        return 1;
+      }
     }
     console.log("Delivery step completed. Validation passed.");
     return 0;

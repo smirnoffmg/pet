@@ -6,6 +6,7 @@ import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
 import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
+import type { ReleaseFrontmatter } from "@/schemas/release.js";
 import { featureBodyIsScaffold, anySectionEmpty } from "@/controllers/discovery-helpers.js";
 
 export type Action = { command: string; reason: string };
@@ -257,6 +258,28 @@ function computeArtifactActionsFor(
           );
           if (allDone && !hasQaPlan) {
             actions.push({ command: `pet qa --feature ${id}`, reason: "generate QA plan" });
+          }
+          if (allDone && hasQaPlan) {
+            const hasAcceptedQaPlan = allArtifacts.some(
+              (a) =>
+                a.kind === "qa_plan" &&
+                (a.frontmatter as QaPlanFrontmatter).feature_id === id &&
+                fm(a).status === "accepted",
+            );
+            if (hasAcceptedQaPlan) {
+              const hasRelease = allArtifacts.some(
+                (a) =>
+                  a.kind === "release" &&
+                  ((a.frontmatter as ReleaseFrontmatter).feature_ids as string[]).includes(id) &&
+                  fm(a).status !== "superseded",
+              );
+              if (!hasRelease) {
+                actions.push({
+                  command: `pet new release --features ${id} Release ${id}`,
+                  reason: "create release scaffold",
+                });
+              }
+            }
           }
         }
       }

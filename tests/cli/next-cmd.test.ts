@@ -250,6 +250,69 @@ describe("computeArtifactActions — per-artifact multi-action model", () => {
     expect(cmds).toEqual(["pet qa --feature FEAT-0001"]);
   });
 
+  it("accepted feature with done tasks + accepted QA plan + no release → new release", () => {
+    const cmds = computeArtifactActions("FEAT-0001", [
+      makeArtifact(
+        "feature",
+        "FEAT-0001",
+        "accepted",
+        { solution_hypothesis_id: "SOL-0001" },
+        "# F\n\nReal criteria.",
+      ),
+      makeArtifact("task", "TASK-0001", "done", { feature_id: "FEAT-0001" }),
+      makeArtifact("qa_plan", "QA-0001", "accepted", { feature_id: "FEAT-0001" }),
+    ]).map((a) => a.command);
+    expect(cmds).toContain("pet new release --features FEAT-0001 Release FEAT-0001");
+  });
+
+  it("accepted feature with done tasks + proposed QA plan → no release yet", () => {
+    const cmds = computeArtifactActions("FEAT-0001", [
+      makeArtifact(
+        "feature",
+        "FEAT-0001",
+        "accepted",
+        { solution_hypothesis_id: "SOL-0001" },
+        "# F\n\nReal criteria.",
+      ),
+      makeArtifact("task", "TASK-0001", "done", { feature_id: "FEAT-0001" }),
+      makeArtifact("qa_plan", "QA-0001", "proposed", { feature_id: "FEAT-0001" }),
+    ]).map((a) => a.command);
+    expect(cmds.some((c) => c.startsWith("pet new release"))).toBe(false);
+    expect(cmds.some((c) => c.startsWith("pet qa"))).toBe(false);
+  });
+
+  it("accepted feature with done tasks + accepted QA plan + existing release → no new release", () => {
+    const cmds = computeArtifactActions("FEAT-0001", [
+      makeArtifact(
+        "feature",
+        "FEAT-0001",
+        "accepted",
+        { solution_hypothesis_id: "SOL-0001" },
+        "# F\n\nReal criteria.",
+      ),
+      makeArtifact("task", "TASK-0001", "done", { feature_id: "FEAT-0001" }),
+      makeArtifact("qa_plan", "QA-0001", "accepted", { feature_id: "FEAT-0001" }),
+      makeArtifact("release", "REL-0001", "proposed", { feature_ids: ["FEAT-0001"] }),
+    ]).map((a) => a.command);
+    expect(cmds.some((c) => c.startsWith("pet new release"))).toBe(false);
+  });
+
+  it("superseded release does not block new release creation", () => {
+    const cmds = computeArtifactActions("FEAT-0001", [
+      makeArtifact(
+        "feature",
+        "FEAT-0001",
+        "accepted",
+        { solution_hypothesis_id: "SOL-0001" },
+        "# F\n\nReal criteria.",
+      ),
+      makeArtifact("task", "TASK-0001", "done", { feature_id: "FEAT-0001" }),
+      makeArtifact("qa_plan", "QA-0001", "accepted", { feature_id: "FEAT-0001" }),
+      makeArtifact("release", "REL-0001", "superseded", { feature_ids: ["FEAT-0001"] }),
+    ]).map((a) => a.command);
+    expect(cmds).toContain("pet new release --features FEAT-0001 Release FEAT-0001");
+  });
+
   it("accepted feature with in-progress task → no feature-level actions", () => {
     const cmds = computeArtifactActions("FEAT-0001", [
       makeArtifact(

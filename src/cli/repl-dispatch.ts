@@ -12,6 +12,7 @@ import { runDiscover } from "./discover-cmd.js";
 import { runDevelop } from "./develop-cmd.js";
 import { runQa } from "./qa-cmd.js";
 import { runRelease } from "./release-cmd.js";
+import { runNew } from "./new-cmd.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
 
 export function isExpensive(command: string): boolean {
@@ -52,6 +53,7 @@ export async function dispatchReplCommand(
   if (sub === "discover") {
     const hypFlag = args.indexOf("--hypothesis");
     const solFlag = args.indexOf("--solution-hypothesis");
+    const featFlag = args.indexOf("--feature");
     if (hypFlag >= 0) {
       const id = args[hypFlag + 1];
       if (!id) return 1;
@@ -66,6 +68,15 @@ export async function dispatchReplCommand(
       if (!id) return 1;
       return runDiscover({
         solutionHypothesis: id,
+        noInk: true,
+        ...(callbacks !== undefined ? { callbacks } : {}),
+      });
+    }
+    if (featFlag >= 0) {
+      const id = args[featFlag + 1];
+      if (!id) return 1;
+      return runDiscover({
+        feature: id,
         noInk: true,
         ...(callbacks !== undefined ? { callbacks } : {}),
       });
@@ -103,6 +114,18 @@ export async function dispatchReplCommand(
       noInk: true,
       ...(callbacks !== undefined ? { callbacks } : {}),
     });
+  }
+
+  if (sub === "new") {
+    const [subKind, ...newArgs] = args;
+    if (subKind === "release") {
+      const featuresFlag = newArgs.indexOf("--features");
+      if (featuresFlag < 0 || !newArgs[featuresFlag + 1]) return 1;
+      const features = newArgs[featuresFlag + 1]!;
+      const titleParts = newArgs.filter((a, i) => !a.startsWith("--") && i !== featuresFlag + 1);
+      const title = titleParts.length > 0 ? titleParts.join(" ") : features;
+      return runNew("release", title, { features });
+    }
   }
 
   console.error(`repl: unknown command: ${command}`);

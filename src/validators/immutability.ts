@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import matter from "gray-matter";
 import path from "node:path";
-import { isDecisionKind } from "@/schemas/index.js";
+import { isDecisionKind, frontmatterSchemaForKind } from "@/schemas/index.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 import { featureBodyIsScaffold } from "@/controllers/discovery-helpers.js";
 import { issue, type ValidationReport } from "./report.js";
@@ -99,10 +99,17 @@ export function validateImmutability(
     }
 
     const mutableKeys = allowedMutableKeys(artifact);
-    const allKeys = new Set([...Object.keys(committedFm), ...Object.keys(currentFm)]);
 
-    for (const key of allKeys) {
-      if (JSON.stringify(committedFm[key]) === JSON.stringify(currentFm[key])) {
+    // Only check keys the current schema recognises; fields removed from the
+    // schema (e.g. refactored FK columns) are not immutability violations.
+    const schema = frontmatterSchemaForKind(artifact.kind);
+    const currentParsed = schema.safeParse(currentFm);
+    const normCurrent = currentParsed.success
+      ? (currentParsed.data as Record<string, unknown>)
+      : currentFm;
+
+    for (const key of Object.keys(normCurrent)) {
+      if (JSON.stringify(committedFm[key]) === JSON.stringify(normCurrent[key])) {
         continue;
       }
       if (mutableKeys.has(key)) {

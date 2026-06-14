@@ -13,20 +13,21 @@ import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesi
 import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { DevTaskFrontmatter } from "@/schemas/task.js";
+import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
 import type { ToolCallEvent } from "@/agents/run-agent.js";
 
 // ─── Row model ───────────────────────────────────────────────────────────────
 
-type ArtifactRow = {
+export type ArtifactRow = {
   type: "artifact";
   artifact: ParsedArtifact;
   depth: 0 | 1 | 2 | 3;
   hasChildren: boolean;
   isCollapsed: boolean;
 };
-type ActionRow = { type: "action"; action: Action; actionIndex: number; depth: number };
-type Row = ArtifactRow | ActionRow;
+export type ActionRow = { type: "action"; action: Action; actionIndex: number; depth: number };
+export type Row = ArtifactRow | ActionRow;
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,11 @@ export function nextAutoCommand(
   return next.command;
 }
 
-function buildRows(
+export function findArtifactRowIndex(rows: Row[], id: string): number {
+  return rows.findIndex((r) => r.type === "artifact" && r.artifact.frontmatter.id === id);
+}
+
+export function buildRows(
   artifacts: ParsedArtifact[],
   expanded: string | null,
   expandedActions: Action[],
@@ -118,6 +123,11 @@ function buildRows(
   for (const task of tasks) {
     const fid = (task.frontmatter as DevTaskFrontmatter).feature_id as string;
     tasksByFeat.set(fid, [...(tasksByFeat.get(fid) ?? []), task]);
+  }
+  const qaPlansByFeat = new Map<string, ParsedArtifact[]>();
+  for (const qa of artifacts.filter((a) => a.kind === "qa_plan")) {
+    const fid = (qa.frontmatter as QaPlanFrontmatter).feature_id as string;
+    qaPlansByFeat.set(fid, [...(qaPlansByFeat.get(fid) ?? []), qa]);
   }
 
   function maybeInjectActions(id: string, depth: number): void {
@@ -188,6 +198,16 @@ function buildRows(
             isCollapsed: false,
           });
           maybeInjectActions(taskId, 3);
+        }
+        for (const qa of (qaPlansByFeat.get(featId) ?? []).sort(byId)) {
+          rows.push({
+            type: "artifact",
+            artifact: qa,
+            depth: 3,
+            hasChildren: false,
+            isCollapsed: false,
+          });
+          maybeInjectActions(fm(qa).id, 3);
         }
       }
     }
@@ -617,6 +637,26 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
     setExpandedActions([]);
     setPhase("running");
 
+    // Scroll the tree so the running artifact is visible. Rows are recomputed
+    // with no expanded/action rows (since we just cleared them), so the index
+    // matches what React will render in the next frame. This prevents the
+    // artifact from drifting off-screen when an auto-chain triggers a discover
+    // immediately after an accept in the middle of the list.
+    if (runningArtifactId) {
+      const freshRows = buildRows(artifacts, null, [], collapsed);
+      const idx = findArtifactRowIndex(freshRows, runningArtifactId);
+      if (idx >= 0) setCursor(idx);
+    }
+
+    // Capture console.error output so it appears in the DockedStrip rather than
+    // being silently swallowed by Ink's patchConsole above the viewport.
+    const capturedErrors: string[] = [];
+    const origError = console.error;
+    console.error = (...args: unknown[]) => {
+      capturedErrors.push(args.map(String).join(" "));
+      origError(...args);
+    };
+
     const callbacks: ExecuteCallbacks = {
       onAgentStart: (role: string) => {
         setAgentState((prev) => (prev ? { ...prev, command: `${role}: ${cmd}` } : null));
@@ -631,12 +671,17 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
     };
 
     void dispatchReplCommand(cmd, callbacks).then((code) => {
+      console.error = origError;
       if (code !== 0) {
         setAgentState((prev) =>
           prev
             ? {
                 ...prev,
-                recentCalls: [...prev.recentCalls, `✗ failed (code ${code})`],
+                recentCalls: [
+                  ...prev.recentCalls,
+                  `✗ failed (code ${code})`,
+                  ...capturedErrors.map((e) => `  ${e}`),
+                ],
               }
             : null,
         );
@@ -644,7 +689,7 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
           setAgentState(null);
           setPhase("idle");
           refresh();
-        }, 1500);
+        }, 3000);
       } else {
         handleSuccess(cmd);
       }
