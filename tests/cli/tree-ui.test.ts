@@ -1,22 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { findArtifactRowIndex } from "@/cli/tree-ui.js";
+import { canMarkTaskDone, findArtifactRowIndex } from "@/cli/tree-ui.js";
 import type { Row } from "@/cli/tree-ui.js";
 import type { ParsedArtifact } from "@/store/parse.js";
 
-function fakeArtifact(id: string): ParsedArtifact {
+function fakeArtifact(
+  id: string,
+  kind: ParsedArtifact["kind"] = "hypothesis",
+  status = "proposed",
+): ParsedArtifact {
   return {
-    kind: "hypothesis",
+    kind,
     filePath: `/doc/${id}.md`,
     relativePath: `${id}.md`,
-    frontmatter: { id, status: "proposed" } as unknown as ParsedArtifact["frontmatter"],
+    frontmatter: { id, status } as unknown as ParsedArtifact["frontmatter"],
     body: "",
   };
 }
 
-function artifactRow(id: string, depth: 0 | 1 | 2 | 3 = 0): Extract<Row, { type: "artifact" }> {
+function artifactRow(
+  id: string,
+  depth: 0 | 1 | 2 | 3 = 0,
+  kind: ParsedArtifact["kind"] = "hypothesis",
+  status = "proposed",
+): Extract<Row, { type: "artifact" }> {
   return {
     type: "artifact",
-    artifact: fakeArtifact(id),
+    artifact: fakeArtifact(id, kind, status),
     depth,
     hasChildren: false,
     isCollapsed: false,
@@ -64,5 +73,29 @@ describe("findArtifactRowIndex", () => {
       artifactRow("FEAT-0001", 2),
     ];
     expect(findArtifactRowIndex(rows, "SOL-0006")).toBe(2);
+  });
+});
+
+describe("canMarkTaskDone", () => {
+  it.each(["todo", "in_progress", "review"])(
+    "returns true for a task row with status %s",
+    (status) => {
+      const row = artifactRow("TASK-0001", 3, "task", status);
+      expect(canMarkTaskDone(row)).toBe(true);
+    },
+  );
+
+  it("returns false for a task row already done", () => {
+    const row = artifactRow("TASK-0001", 3, "task", "done");
+    expect(canMarkTaskDone(row)).toBe(false);
+  });
+
+  it("returns false for a non-task artifact row", () => {
+    const row = artifactRow("FEAT-0001", 2, "feature", "accepted");
+    expect(canMarkTaskDone(row)).toBe(false);
+  });
+
+  it("returns false for an action row", () => {
+    expect(canMarkTaskDone(actionRow())).toBe(false);
   });
 });

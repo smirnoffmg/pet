@@ -66,21 +66,43 @@ function extractArtifactId(command: string): string | null {
   return match?.[1] ?? null;
 }
 
-export function nextAutoCommand(
-  completedCommand: string,
-  artifacts: ParsedArtifact[],
-): string | null {
-  if (!completedCommand.startsWith("pet accept")) return null;
-  const acceptedId = extractArtifactId(completedCommand);
-  if (!acceptedId) return null;
-  const nextActions = computeArtifactActions(acceptedId, artifacts);
+function chainFrom(id: string, artifacts: ParsedArtifact[]): string | null {
+  const nextActions = computeArtifactActions(id, artifacts);
   const next = nextActions[0];
   if (!next || next.command.startsWith("pet accept")) return null;
   return next.command;
 }
 
+export function nextAutoCommand(
+  completedCommand: string,
+  artifacts: ParsedArtifact[],
+): string | null {
+  if (completedCommand.startsWith("pet accept")) {
+    const acceptedId = extractArtifactId(completedCommand);
+    if (!acceptedId) return null;
+    return chainFrom(acceptedId, artifacts);
+  }
+
+  if (completedCommand.startsWith("pet task done")) {
+    const taskId = extractArtifactId(completedCommand);
+    if (!taskId) return null;
+    const task = artifacts.find((a) => a.kind === "task" && a.frontmatter.id === taskId);
+    const featureId = task ? (task.frontmatter as DevTaskFrontmatter).feature_id : undefined;
+    if (!featureId) return null;
+    return chainFrom(featureId, artifacts);
+  }
+
+  return null;
+}
+
 export function findArtifactRowIndex(rows: Row[], id: string): number {
   return rows.findIndex((r) => r.type === "artifact" && r.artifact.frontmatter.id === id);
+}
+
+export function canMarkTaskDone(row: Row): boolean {
+  if (row.type !== "artifact") return false;
+  if (row.artifact.kind !== "task") return false;
+  return fm(row.artifact).status !== "done";
 }
 
 export function buildRows(
@@ -390,7 +412,7 @@ function Footer({ phase, onActionRow, cursor, total, activeTab }: FooterProps) {
         ? "↑↓ scroll   l tree   q quit"
         : onActionRow
           ? "↑↓ move  ↵ run  Esc back   l logs"
-          : "↑↓ move   ↵ actions   ←/→ collapse/expand   l logs   q quit";
+          : "↑↓ move   ↵ actions   ←/→ collapse/expand   d done   l logs   q quit";
   return (
     <Box borderStyle="single" justifyContent="space-between">
       <Text dimColor>{hint}</Text>
@@ -744,6 +766,10 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
             next.delete(id);
             return next;
           });
+          return;
+        }
+        if (input === "d" && canMarkTaskDone(currentRow)) {
+          startCommand(`pet task done ${id}`);
           return;
         }
       }

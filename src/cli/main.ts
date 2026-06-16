@@ -25,6 +25,7 @@ import { runOrchestrate } from "./orchestrate-cmd.js";
 import { runQa } from "./qa-cmd.js";
 import { runRelease } from "./release-cmd.js";
 import { runRepl } from "./repl-cmd.js";
+import { runTaskDone } from "./task-cmd.js";
 import { runTree } from "./tree-cmd.js";
 import { runValidate } from "./validate-cmd.js";
 
@@ -281,6 +282,16 @@ acceptCmd
   .option("--yes", "Skip HITL confirmation prompt (for scripted/test use only)")
   .action(async (id: string, options: { yes?: boolean }) => {
     process.exit(await runAcceptRelease(id, options.yes !== undefined ? { yes: options.yes } : {}));
+  });
+
+const taskCmd = program.command("task").description("Manage dev task lifecycle state");
+
+taskCmd
+  .command("done")
+  .description("Mark a dev task as done (status: todo|in_progress|review → done)")
+  .argument("<id>", "Task ID (e.g. TASK-0001)")
+  .action(async (id: string) => {
+    process.exit(await runTaskDone(id));
   });
 
 program

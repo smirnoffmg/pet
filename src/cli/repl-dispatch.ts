@@ -13,6 +13,7 @@ import { runDevelop } from "./develop-cmd.js";
 import { runQa } from "./qa-cmd.js";
 import { runRelease } from "./release-cmd.js";
 import { runNew } from "./new-cmd.js";
+import { runTaskDone } from "./task-cmd.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
 
 export function isExpensive(command: string): boolean {
@@ -114,6 +115,14 @@ export async function dispatchReplCommand(
       noInk: true,
       ...(callbacks !== undefined ? { callbacks } : {}),
     });
+  }
+
+  if (sub === "task") {
+    const [taskSub, id] = args;
+    if (taskSub === "done") {
+      if (!id) return 1;
+      return runTaskDone(id);
+    }
   }
 
   if (sub === "new") {
