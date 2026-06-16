@@ -133,6 +133,76 @@ describe("loadMcpTools", () => {
       spy.mockRestore();
     }
   });
+
+  // TC-09: Streamable HTTP config shape — the modern remote transport, with auth headers
+  it("TC-09: passes correct Streamable HTTP config shape to MultiServerMCPClient", async () => {
+    const dir = withMcpConfig(
+      JSON.stringify({
+        servers: [
+          {
+            name: "remote-http",
+            transport: "http",
+            url: "https://example.com/mcp",
+            headers: { Authorization: "Bearer test-token" },
+          },
+        ],
+      }),
+    );
+    const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["remote-http"]);
+    const { MultiServerMCPClient } = await import("@langchain/mcp-adapters");
+    try {
+      const { disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
+      expect(MultiServerMCPClient).toHaveBeenCalledOnce();
+      const constructorArg = (MultiServerMCPClient as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+      const serverEntry = (constructorArg as { mcpServers: Record<string, unknown> }).mcpServers[
+        "remote-http"
+      ];
+      expect(serverEntry).toMatchObject({
+        transport: "http",
+        url: "https://example.com/mcp",
+        headers: { Authorization: "Bearer test-token" },
+      });
+      expect(serverEntry).not.toHaveProperty("command");
+      expect(serverEntry).not.toHaveProperty("args");
+      expect(serverEntry).not.toHaveProperty("env");
+      await disconnect();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  // TC-10: headers are also forwarded for the legacy SSE transport, not just stdio's env
+  it("TC-10: forwards headers for SSE transport when configured", async () => {
+    const dir = withMcpConfig(
+      JSON.stringify({
+        servers: [
+          {
+            name: "remote-sse",
+            transport: "sse",
+            url: "https://example.com/sse",
+            headers: { "X-Api-Key": "secret" },
+          },
+        ],
+      }),
+    );
+    const spy = vi.spyOn(pathPerms, "mcpServersForRole").mockReturnValue(["remote-sse"]);
+    const { MultiServerMCPClient } = await import("@langchain/mcp-adapters");
+    try {
+      const { disconnect } = (await loadMcpTools("researcher", dir))._unsafeUnwrap();
+      const constructorArg = (MultiServerMCPClient as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+      const serverEntry = (constructorArg as { mcpServers: Record<string, unknown> }).mcpServers[
+        "remote-sse"
+      ];
+      expect(serverEntry).toMatchObject({
+        transport: "sse",
+        url: "https://example.com/sse",
+        headers: { "X-Api-Key": "secret" },
+      });
+      await disconnect();
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("validateMcpConfig", () => {
@@ -176,6 +246,36 @@ describe("validateMcpConfig", () => {
     const dir = withMcpConfig(
       JSON.stringify({ servers: [{ name: "bad", transport: "sse", url: "not-a-url" }] }),
     );
+    const errors = validateMcpConfig(dir);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("returns no errors for a valid Streamable HTTP config with headers", () => {
+    const dir = withMcpConfig(
+      JSON.stringify({
+        servers: [
+          {
+            name: "remote-http",
+            transport: "http",
+            url: "https://example.com/mcp",
+            headers: { Authorization: "Bearer t" },
+          },
+        ],
+      }),
+    );
+    expect(validateMcpConfig(dir)).toEqual([]);
+  });
+
+  it("returns error for invalid Streamable HTTP URL", () => {
+    const dir = withMcpConfig(
+      JSON.stringify({ servers: [{ name: "bad", transport: "http", url: "not-a-url" }] }),
+    );
+    const errors = validateMcpConfig(dir);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("returns error for missing required field (url on http transport)", () => {
+    const dir = withMcpConfig(JSON.stringify({ servers: [{ name: "bad", transport: "http" }] }));
     const errors = validateMcpConfig(dir);
     expect(errors.length).toBeGreaterThan(0);
   });

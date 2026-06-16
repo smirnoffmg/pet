@@ -19,11 +19,22 @@ const sseServerSchema = z.object({
   name: z.string().min(1),
   transport: z.literal("sse"),
   url: z.string().url(),
+  headers: z.record(z.string()).optional(),
+});
+
+// Streamable HTTP is the MCP spec's current remote transport; SSE is kept for
+// legacy servers that haven't migrated. Both take a url + optional auth headers.
+const httpServerSchema = z.object({
+  name: z.string().min(1),
+  transport: z.literal("http"),
+  url: z.string().url(),
+  headers: z.record(z.string()).optional(),
 });
 
 export const mcpServerSchema = z.discriminatedUnion("transport", [
   stdioServerSchema,
   sseServerSchema,
+  httpServerSchema,
 ]);
 
 export const mcpConfigSchema = z.object({
@@ -85,8 +96,9 @@ export async function loadMcpTools(
       };
     } else {
       mcpServers[s.name] = {
-        transport: "sse" as const,
+        transport: s.transport,
         url: s.url,
+        ...(s.headers !== undefined ? { headers: s.headers } : {}),
       };
     }
   }
