@@ -13,6 +13,87 @@ import matter from "gray-matter";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixtureSrc = path.join(__dirname, "..", "fixtures", "doc-deliver");
 
+describe("executeCommands logging", () => {
+  let fixtureRoot: string;
+
+  beforeEach(() => {
+    fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pet-executor-log-test-"));
+    fs.cpSync(fixtureSrc, fixtureRoot, { recursive: true });
+    process.env["PET_MOCK_AGENTS"] = "1";
+    fs.mkdirSync(path.join(fixtureRoot, "product/03-features"), { recursive: true });
+    fs.mkdirSync(path.join(fixtureRoot, "product/04-tasks"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fixtureRoot, "product/03-features/0001-f.md"),
+      matter.stringify("# Feature\n", {
+        id: featureIdSchema.parse("FEAT-0099"),
+        status: "accepted",
+        solution_hypothesis_id: solutionHypothesisIdSchema.parse("SOL-0001"),
+        architectural_review_status: "pending",
+      }),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  });
+
+  it("logs ▶ start and ✓ finish at outcome level", async () => {
+    const outcomeLines: string[] = [];
+    const logger = createLogger({ verbose: false });
+    logger.outcome = (msg) => outcomeLines.push(msg);
+
+    await executeCommands(
+      fixtureRoot,
+      [
+        {
+          kind: "spawn_architect",
+          brief: {
+            featureId: featureIdSchema.parse("FEAT-0099"),
+            featureTitle: "Feature",
+            featureBody: "# Feature\n",
+          },
+        },
+      ],
+      false,
+      logger,
+    );
+
+    expect(outcomeLines.some((l) => l.startsWith("▶ spawn Architect for FEAT-0099"))).toBe(true);
+    expect(outcomeLines.some((l) => l.startsWith("✓ spawn Architect for FEAT-0099"))).toBe(true);
+    expect(outcomeLines.find((l) => l.startsWith("✓"))).toMatch(/\(\d+\.\ds\)$/);
+  });
+
+  it("logs ✗ FAILED at outcome level and rethrows when agent throws", async () => {
+    const outcomeLines: string[] = [];
+    const logger = createLogger({ verbose: false });
+    logger.outcome = (msg) => outcomeLines.push(msg);
+
+    await expect(
+      executeCommands(
+        fixtureRoot,
+        [
+          {
+            kind: "spawn_architect",
+            brief: {
+              featureId: featureIdSchema.parse("FEAT-9999"),
+              featureTitle: "Nonexistent",
+              featureBody: "# Nonexistent\n",
+            },
+          },
+        ],
+        false,
+        logger,
+      ),
+    ).rejects.toThrow();
+
+    expect(
+      outcomeLines.some(
+        (l) => l.includes("✗") && l.includes("FEAT-9999") && l.includes("FAILED after"),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("executeCommands mock", () => {
   let fixtureRoot: string;
 

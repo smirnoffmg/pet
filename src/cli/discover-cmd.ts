@@ -162,6 +162,7 @@ export async function runDiscover(options: DiscoverOptions): Promise<number> {
   const repoHash = computeRepoHash(repoRoot);
   const sessionPath = sessionDir(repoHash, invocationId);
   fs.mkdirSync(sessionPath, { recursive: true });
+  options.callbacks?.onLogPath?.(ensureSessionLogPath(sessionPath));
   const verbose = options.verbose === true || config.verbose || isVerboseEnv();
   const logger = createLogger({
     verbose,
@@ -184,6 +185,8 @@ export async function runDiscover(options: DiscoverOptions): Promise<number> {
       await executeCommands(root, commands, false, logger, options.callbacks);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      const stack = e instanceof Error && e.stack ? `\n${e.stack}` : "";
+      logger.outcome(`ERROR: ${message}${stack}`);
       console.error(message);
       return 1;
     }

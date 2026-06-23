@@ -38,6 +38,7 @@ interface AgentState {
   elapsed: number;
   recentCalls: string[];
   runningArtifactId: string | null;
+  logPath: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -392,6 +393,7 @@ function DockedStrip({ state }: DockedStripProps) {
           </Text>
         ),
       )}
+      {state.logPath !== null && <Text dimColor>{`  log → ${state.logPath}`}</Text>}
     </Box>
   );
 }
@@ -654,7 +656,7 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
 
   function startCommand(cmd: string): void {
     const runningArtifactId = extractArtifactId(cmd);
-    setAgentState({ command: cmd, elapsed: 0, recentCalls: [], runningArtifactId });
+    setAgentState({ command: cmd, elapsed: 0, recentCalls: [], runningArtifactId, logPath: null });
     setExpanded(null);
     setExpandedActions([]);
     setPhase("running");
@@ -690,6 +692,9 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
           return { ...prev, recentCalls: [...prev.recentCalls, entry] };
         });
       },
+      onLogPath: (logPath: string) => {
+        setAgentState((prev) => (prev ? { ...prev, logPath } : null));
+      },
     };
 
     void dispatchReplCommand(cmd, callbacks).then((code) => {
@@ -711,7 +716,7 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
           setAgentState(null);
           setPhase("idle");
           refresh();
-        }, 3000);
+        }, 10000);
       } else {
         handleSuccess(cmd);
       }

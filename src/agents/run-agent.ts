@@ -102,6 +102,11 @@ export async function runLiveAgent(
         messages: [{ role: "user", content: userMessage }],
       });
     }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error && e.stack ? `\n${e.stack}` : "";
+    logger.outcome(`Agent ${role} FAILED: ${message}${stack}`);
+    throw e;
   } finally {
     await disconnect();
   }

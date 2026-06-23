@@ -1,6 +1,7 @@
 import { reconcileQa, explainQaIdle } from "@/controllers/qa-lead.js";
 import { loadSnapshot, getFeature } from "@/controllers/snapshot.js";
 import { executeCommands, formatCommand } from "@/agents/executor.js";
+import type { ExecuteCallbacks } from "@/agents/executor.js";
 import { renderAgentPanel } from "@/cli/render-agent-panel.js";
 import { estimatePlanCostUsd, confirmCostIfNeeded } from "@/agents/cost.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
@@ -17,6 +18,7 @@ export type QaOptions = {
   yes?: boolean;
   verbose?: boolean;
   noInk?: boolean;
+  callbacks?: ExecuteCallbacks;
 };
 
 export async function runQa(options: QaOptions): Promise<number> {
@@ -82,6 +84,7 @@ export async function runQa(options: QaOptions): Promise<number> {
   const repoHash = computeRepoHash(repoRoot);
   const sessionPath = sessionDir(repoHash, invocationId);
   fs.mkdirSync(sessionPath, { recursive: true });
+  options.callbacks?.onLogPath?.(ensureSessionLogPath(sessionPath));
   const verbose = options.verbose === true || config.verbose || isVerboseEnv();
   const logger = createLogger({
     verbose,
@@ -99,9 +102,11 @@ export async function runQa(options: QaOptions): Promise<number> {
 
   if (options.noInk) {
     try {
-      await executeCommands(root, commands, false, logger);
+      await executeCommands(root, commands, false, logger, options.callbacks);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      const stack = e instanceof Error && e.stack ? `\n${e.stack}` : "";
+      logger.outcome(`ERROR: ${message}${stack}`);
       console.error(message);
       return 1;
     }

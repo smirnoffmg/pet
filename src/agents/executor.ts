@@ -64,6 +64,7 @@ export function formatCommand(cmd: SubagentCommand): string {
 export type ExecuteCallbacks = {
   onAgentStart?: (role: string) => void;
   onToolCall?: (e: ToolCallEvent) => void;
+  onLogPath?: (logPath: string) => void;
 };
 
 export async function executeCommands(
@@ -79,18 +80,28 @@ export async function executeCommands(
 
   const config = loadConfig();
   for (const cmd of commands) {
-    logger.info(`Executing: ${formatCommand(cmd)}`);
+    const cmdStart = Date.now();
+    logger.outcome(`▶ ${formatCommand(cmd)}`);
     const before = captureDocSnapshot(docRoot);
 
-    if (config.mockAgents) {
-      logger.verbose("Using mock agent (PET_MOCK_AGENTS=1)");
-      runMockCommand(docRoot, cmd);
-    } else {
-      const role = KIND_TO_ROLE[cmd.kind];
-      callbacks?.onAgentStart?.(role);
-      await runLiveAgent(role, docRoot, cmd.brief, logger, cmd.kind, callbacks?.onToolCall);
+    try {
+      if (config.mockAgents) {
+        logger.verbose("Using mock agent (PET_MOCK_AGENTS=1)");
+        runMockCommand(docRoot, cmd);
+      } else {
+        const role = KIND_TO_ROLE[cmd.kind];
+        callbacks?.onAgentStart?.(role);
+        await runLiveAgent(role, docRoot, cmd.brief, logger, cmd.kind, callbacks?.onToolCall);
+      }
+    } catch (e) {
+      const elapsed = ((Date.now() - cmdStart) / 1000).toFixed(1);
+      const msg = e instanceof Error ? e.message : String(e);
+      const stack = e instanceof Error && e.stack ? `\n${e.stack}` : "";
+      logger.outcome(`✗ ${formatCommand(cmd)} FAILED after ${elapsed}s: ${msg}${stack}`);
+      throw e;
     }
 
+    const elapsed = ((Date.now() - cmdStart) / 1000).toFixed(1);
     const changes = diffDocSnapshot(before, captureDocSnapshot(docRoot));
     if (changes.length > 0) {
       logger.outcome(`Artifacts changed:\n${changes.map((c) => `  ${c}`).join("\n")}`);
@@ -101,7 +112,7 @@ export async function executeCommands(
     const changesLine = changes.length > 0 ? changes.join(", ") : "(no artifact changes)";
     appendOrchestrationDecision(docRoot, `${formatCommand(cmd)} → ${changesLine}`);
 
-    logger.info(`Finished: ${formatCommand(cmd)}`);
+    logger.outcome(`✓ ${formatCommand(cmd)} (${elapsed}s)`);
   }
 }
 
