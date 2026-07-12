@@ -194,6 +194,14 @@ pet discover --solution-hypothesis SOL-0001 --yes
 pet accept feature FEAT-0001
 ```
 
+If a feature was created as a bare scaffold and needs its body filled in
+before delivery, run the same command with `--feature` instead once the
+feature is accepted — it spawns DesignerEnrich rather than FeatureDesigner:
+
+```bash
+pet discover --feature FEAT-0001 --yes
+```
+
 ### 6. Deliver (Architect + TechLead)
 
 ```bash
@@ -208,8 +216,17 @@ pet deliver --feature FEAT-0001 --yes
 ```bash
 pet list tasks                     # see what was created
 pet develop --task TASK-0001 --yes # Dev agent enriches task body
-# Implement the task yourself, then set status: done in frontmatter
+# Implement the task yourself, then:
+pet task done TASK-0001            # archives it, stamps completed_at/commit_sha,
+                                    # validates FKs (rolls back on failure)
 ```
+
+`pet task done` is the preferred way to close out a task — it replaces
+hand-editing `status: done` in frontmatter and moving the file into
+`04-tasks/archive/` yourself. The same action is available as a `d` keypress
+on a focused task row in the Tree UI (`pet`, see below); marking the _last_
+open task of an accepted feature done that way auto-chains straight into
+`pet qa --feature <id>`.
 
 ### 8. QA and release
 
@@ -225,13 +242,30 @@ pet accept release REL-0001
 
 ---
 
+## Tree UI
+
+Once a pipeline exists, `pet` with **no subcommand** is the default
+day-to-day driver — it opens an interactive Tree UI (not the chat below):
+
+```bash
+pet          # bare command — opens the Tree UI
+```
+
+- Up/down to move, left/right to collapse/expand an artifact's children
+- Enter on an artifact shows its valid next actions (accept, discover,
+  deliver, ...) and runs the one you select
+- `d` on a focused task row runs `pet task done <id>` — archives the task and,
+  if it was the last open task on an accepted feature, auto-chains into
+  `pet qa --feature <id>`
+- `l` toggles the orchestration/session log view
+- `q` quits
+
 ## Conversational interface
 
 Instead of running individual commands, you can use the Orchestrator dialogue:
 
 ```bash
-pet          # bare command — opens a multi-turn session
-pet chat     # explicit alias
+pet chat     # opens a multi-turn session — NOT the same as bare `pet` above
 ```
 
 The Orchestrator reads your current pipeline state and lets you:
@@ -246,17 +280,21 @@ Exit with `Ctrl-C` or type `.exit`.
 
 ## Useful commands
 
-| Command                     | What it does                                             |
-| --------------------------- | -------------------------------------------------------- |
-| `pet list`                  | Pipeline tree: HYP → SOL → FEAT                          |
-| `pet list tasks`            | All open dev tasks                                       |
-| `pet next`                  | Show the recommended next action                         |
-| `pet orchestrate --dry-run` | Preview what `orchestrate` would do                      |
-| `pet orchestrate --yes`     | Advance the pipeline one step                            |
-| `pet repl`                  | Interactive loop: show next action, confirm, run, repeat |
-| `pet validate`              | Validate all artifacts (also runs on pre-commit)         |
-| `pet logs`                  | Orchestration audit log + latest session log             |
-| `pet clean`                 | Remove local session data under `~/.local/share/pet/`    |
+| Command                          | What it does                                                     |
+| -------------------------------- | ---------------------------------------------------------------- |
+| `pet`                            | Tree UI: browse the pipeline, run next actions, mark tasks done  |
+| `pet chat`                       | Conversational Orchestrator session (not the same as bare `pet`) |
+| `pet list`                       | Pipeline tree: HYP → SOL → FEAT                                  |
+| `pet list tasks`                 | All open dev tasks                                               |
+| `pet next`                       | Show the recommended next action                                 |
+| `pet orchestrate --dry-run`      | Preview what `orchestrate` would do                              |
+| `pet orchestrate --yes`          | Advance the pipeline one step                                    |
+| `pet repl`                       | Interactive loop: show next action, confirm, run, repeat         |
+| `pet task done <id>`             | Mark a dev task done: archive + stamp frontmatter                |
+| `pet new adr` / `pet accept adr` | Hand-author an ADR outside the Architect agent's own writes      |
+| `pet validate`                   | Validate all artifacts (also runs on pre-commit)                 |
+| `pet logs`                       | Orchestration audit log + latest session log                     |
+| `pet clean`                      | Remove local session data under `~/.local/share/pet/`            |
 
 ---
 

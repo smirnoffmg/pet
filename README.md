@@ -26,7 +26,15 @@ This erosion of captured rationale - what Storey (2026) calls [intent debt](http
 
 ## TUI
 
+Run `pet` with no arguments to open the Tree UI - the default day-to-day
+driver once a pipeline exists. Browse the artifact tree, expand an artifact
+for its valid next actions, press `d` on a task to mark it done (auto-chains
+into QA when it's the last task on a feature), press `l` for the audit log.
+
 ![tui](doc/images/tui.png)
+
+For a conversational alternative, use `pet chat` instead - see
+[Agent hierarchy](#agent-hierarchy) below.
 
 ---
 
@@ -98,7 +106,11 @@ pet accept feature FEAT-0001
 pet deliver --feature FEAT-0001
 # -> Architect writes ADRs; TechLead creates TASK-0001...TASK-0004
 
-# Implement, then:
+# Implement each task, then archive it:
+pet task done TASK-0001   # ...through TASK-0004
+# (from the Tree UI - just run `pet` - pressing `d` on the last task
+#  auto-chains straight into `pet qa --feature FEAT-0001`)
+
 pet qa --feature FEAT-0001
 pet new release --features FEAT-0001 "v1.3"
 pet release --release REL-0001
@@ -112,7 +124,7 @@ Six months later, a new engineer asks: "Why do we show shipping cost on the prod
 ## Agent hierarchy
 
 ```
-Orchestrator  (pet / pet chat - interactive dialogue)
+Orchestrator  (pet chat - interactive dialogue; bare `pet` opens the Tree UI, not this)
 +-- DeliveryLead
 |   +-- Architect    writes ADRs, clears architectural review
 |   +-- TechLead     decomposes features into tasks
