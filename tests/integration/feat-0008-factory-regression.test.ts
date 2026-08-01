@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const petJs = path.join(repoRoot, "dist", "pet.js");
 
-function runPdt(cwd: string, args: string[]): { status: number | null; combined: string } {
+function runPet(cwd: string, args: string[]): { status: number | null; combined: string } {
   const r = spawnSync(process.execPath, [petJs, ...args], {
     cwd,
     encoding: "utf8",
@@ -33,7 +33,7 @@ describe("FEAT-0008 factory regression (mock mode)", () => {
   it("mock discover cycle completes under PET_LLM_PROVIDER=anthropic without a real API key", () => {
     const ctx = createDiscoveryFixture();
     try {
-      const run = runPdt(ctx.repoRoot, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
+      const run = runPet(ctx.repoRoot, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
       expect(run.status, run.combined).toBe(0);
 
       const hypPath = path.join(
@@ -67,7 +67,7 @@ describe("FEAT-0008 factory regression (mock mode)", () => {
         "utf8",
       );
 
-      const run = runPdt(ctx.repoRoot, ["deliver", "--feature", "FEAT-0012", "--yes"]);
+      const run = runPet(ctx.repoRoot, ["deliver", "--feature", "FEAT-0012", "--yes"]);
       expect(run.status, run.combined).toBe(0);
 
       const featPath = path.join(ctx.productRoot, "03-features/0012-test-solution-feature.md");

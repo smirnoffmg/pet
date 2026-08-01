@@ -3,6 +3,7 @@ import { runChatSession } from "@/chat/session.js";
 import type { ArtifactKind } from "@/schemas/ids.js";
 import { findRepoRoot } from "@/store/repo-root.js";
 import { Command } from "commander";
+import { describeModelFault, isModelFault } from "@/agents/model-fault.js";
 import {
   runAcceptAdr,
   runAcceptFeature,
@@ -23,11 +24,30 @@ import { runNew, runNewAdr } from "./new-cmd.js";
 import { runNext } from "./next-cmd.js";
 import { runOrchestrate } from "./orchestrate-cmd.js";
 import { runQa } from "./qa-cmd.js";
+import { runRejectSolutionHypothesis } from "./reject-cmd.js";
 import { runRelease } from "./release-cmd.js";
 import { runRepl } from "./repl-cmd.js";
 import { runTaskDone } from "./task-cmd.js";
 import { runTree } from "./tree-cmd.js";
 import { runValidate } from "./validate-cmd.js";
+
+/**
+ * LangGraph runs the tasks of one superstep concurrently. When several fail, only
+ * the first rejection is awaited — the rest arrive here with no handler attached,
+ * and Node's default is to abort the process. That replaced the command's own
+ * error report with a raw stack dump *after* it had already been printed.
+ *
+ * A refused agent action is the permission and schema layers working, so it is
+ * reported on one line and the run continues to its real exit code. Anything else
+ * still crashes loudly — this must not become a way to hide genuine defects.
+ */
+process.on("unhandledRejection", (reason: unknown) => {
+  if (isModelFault(reason)) {
+    console.error(`Agent action refused (system held): ${describeModelFault(reason)}`);
+    return;
+  }
+  throw reason;
+});
 
 const program = new Command();
 
@@ -282,6 +302,25 @@ acceptCmd
   .option("--yes", "Skip HITL confirmation prompt (for scripted/test use only)")
   .action(async (id: string, options: { yes?: boolean }) => {
     process.exit(await runAcceptRelease(id, options.yes !== undefined ? { yes: options.yes } : {}));
+  });
+
+const rejectCmd = program
+  .command("reject")
+  .description("Record a decision artifact as rejected, with rationale");
+
+rejectCmd
+  .command("solution-hypothesis")
+  .description("Reject a solution hypothesis (proposed → rejected)")
+  .argument("<id>", "Solution hypothesis ID (e.g. SOL-0002)")
+  .option("--rationale <text>", "Why this alternative was not chosen (required)")
+  .option("--yes", "Skip HITL confirmation prompt (for scripted/test use only)")
+  .action(async (id: string, options: { rationale?: string; yes?: boolean }) => {
+    process.exit(
+      await runRejectSolutionHypothesis(id, {
+        ...(options.rationale !== undefined ? { rationale: options.rationale } : {}),
+        ...(options.yes !== undefined ? { yes: options.yes } : {}),
+      }),
+    );
   });
 
 const taskCmd = program.command("task").description("Manage dev task lifecycle state");

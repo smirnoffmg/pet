@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
-import { confirm } from "@inquirer/prompts";
+import { confirmGate } from "./confirm-gate.js";
 import { scanArtifacts } from "@/store/scan.js";
 import { docRoot, findRepoRoot } from "@/store/repo-root.js";
 import { ADR_DIR } from "@/store/paths.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
+import { atomicFrontmatterUpdate } from "./atomic-update.js";
 import { printDiscernmentChecklist } from "./discernment.js";
 import type { HypothesisFrontmatter } from "@/schemas/hypothesis.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
@@ -15,16 +15,9 @@ import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
 import type { ReleaseFrontmatter } from "@/schemas/release.js";
 
 function atomicAccept(filePath: string, root: string, repoRoot: string): number {
-  const raw = fs.readFileSync(filePath, "utf8");
-  const parsed = matter(raw);
-  const data = parsed.data as Record<string, unknown>;
-  data["status"] = "accepted";
-  fs.writeFileSync(filePath, matter.stringify(parsed.content, data), "utf8");
-
-  const validation = validateRepo(root, repoRoot);
-  if (validation.isErr()) {
-    fs.writeFileSync(filePath, raw, "utf8");
-    console.error(formatReport(validation.error));
+  const result = atomicFrontmatterUpdate(filePath, { status: "accepted" }, root, repoRoot);
+  if (result.isErr()) {
+    console.error(formatReport(result.error));
     return 1;
   }
   return 0;
@@ -67,10 +60,9 @@ export async function runAcceptHypothesis(
 
   if (!opts.yes) {
     printDiscernmentChecklist("hypothesis", hypothesisId);
-    const ok = await confirm({
-      message: `Accept hypothesis ${hypothesisId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept hypothesis ${hypothesisId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -121,10 +113,9 @@ export async function runAcceptSolutionHypothesis(
 
   if (!opts.yes) {
     printDiscernmentChecklist("solution_hypothesis", solutionHypothesisId);
-    const ok = await confirm({
-      message: `Accept solution hypothesis ${solutionHypothesisId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept solution hypothesis ${solutionHypothesisId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -175,10 +166,9 @@ export async function runAcceptFeature(
 
   if (!opts.yes) {
     printDiscernmentChecklist("feature", featureId);
-    const ok = await confirm({
-      message: `Accept feature ${featureId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept feature ${featureId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -236,10 +226,7 @@ export async function runAcceptAdr(adrArg: string, opts: { yes?: boolean } = {})
 
   if (!opts.yes) {
     printDiscernmentChecklist("adr", `ADR-${padded}`);
-    const ok = await confirm({
-      message: `Accept ADR ${n}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(`Accept ADR ${n}? This is a human-in-the-loop decision.`);
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -293,10 +280,9 @@ export async function runAcceptMetric(
 
   if (!opts.yes) {
     printDiscernmentChecklist("metric", metricId);
-    const ok = await confirm({
-      message: `Accept metric ${metricId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept metric ${metricId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -343,10 +329,9 @@ export async function runAcceptQaPlan(
 
   if (!opts.yes) {
     printDiscernmentChecklist("qa_plan", qaPlanId);
-    const ok = await confirm({
-      message: `Accept QA plan ${qaPlanId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept QA plan ${qaPlanId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;
@@ -395,10 +380,9 @@ export async function runAcceptRelease(
 
   if (!opts.yes) {
     printDiscernmentChecklist("release", releaseId);
-    const ok = await confirm({
-      message: `Accept release ${releaseId}? This is a human-in-the-loop decision.`,
-      default: false,
-    });
+    const ok = await confirmGate(
+      `Accept release ${releaseId}? This is a human-in-the-loop decision.`,
+    );
     if (!ok) {
       console.log("Aborted.");
       return 1;

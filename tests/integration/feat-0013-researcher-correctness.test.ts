@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const petJs = path.join(repoRoot, "dist", "pet.js");
 
-function runPdt(
+function runPet(
   cwd: string,
   args: string[],
 ): { status: number | null; stdout: string; stderr: string; combined: string } {
@@ -37,7 +37,7 @@ describe("FEAT-0013 Researcher correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
+      const result = runPet(cwd, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
       expect(result.status, result.combined).toBe(0);
 
       assertFixtureDiff({
@@ -70,7 +70,7 @@ describe("FEAT-0013 Researcher correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["discover", "--hypothesis", "PROB-0003", "--yes"]);
+      const result = runPet(cwd, ["discover", "--hypothesis", "PROB-0003", "--yes"]);
 
       // The reconciler returns ok:false for accepted hypotheses targeting the accepted-idle path
       // (accepted + active SOL-), or exits 1 with a reason message. Either way no files change.
@@ -90,7 +90,7 @@ describe("FEAT-0013 Researcher correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["discover", "--hypothesis", "PROB-0004", "--yes"]);
+      const result = runPet(cwd, ["discover", "--hypothesis", "PROB-0004", "--yes"]);
 
       // reconcileDiscovery returns ok:false for invalidated status → exit 1
       expect(result.status, `Expected non-zero exit. Output: ${result.combined}`).not.toBe(0);
@@ -106,7 +106,7 @@ describe("FEAT-0013 Researcher correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["discover", "--hypothesis", "PROB-0002", "--yes"]);
+      const result = runPet(cwd, ["discover", "--hypothesis", "PROB-0002", "--yes"]);
       expect(result.status, result.combined).toBe(0);
 
       assertFixtureDiff({
@@ -140,7 +140,7 @@ describe("FEAT-0013 Researcher correctness (mock mode)", () => {
       const cwd = path.resolve(ctx.root, "..", "..");
       try {
         const snapshot = snapshotFixture(ctx.root);
-        const result = runPdt(cwd, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
+        const result = runPet(cwd, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
         expect(result.status, result.combined).toBe(0);
 
         assertFixtureDiff({

@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const petJs = path.join(repoRoot, "dist", "pet.js");
 
-function runPdt(
+function runPet(
   cwd: string,
   args: string[],
 ): { status: number | null; stdout: string; stderr: string; combined: string } {
@@ -36,7 +36,7 @@ describe("FEAT-0017 DevOps correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["release", "--release", "REL-0001", "--yes"]);
+      const result = runPet(cwd, ["release", "--release", "REL-0001", "--yes"]);
       expect(result.status, result.combined).toBe(0);
 
       const current = snapshotFixture(ctx.root);
@@ -80,7 +80,7 @@ describe("FEAT-0017 DevOps correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["release", "--release", "REL-0002", "--yes"]);
+      const result = runPet(cwd, ["release", "--release", "REL-0002", "--yes"]);
 
       expect(result.status, `Expected non-zero exit. Output: ${result.combined}`).not.toBe(0);
 
@@ -95,7 +95,7 @@ describe("FEAT-0017 DevOps correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["release", "--release", "REL-9999", "--yes"]);
+      const result = runPet(cwd, ["release", "--release", "REL-9999", "--yes"]);
 
       expect(result.status, `Expected non-zero exit. Output: ${result.combined}`).not.toBe(0);
 
@@ -110,13 +110,13 @@ describe("FEAT-0017 DevOps correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       // First run — enriches the release
-      const result1 = runPdt(cwd, ["release", "--release", "REL-0001", "--yes"]);
+      const result1 = runPet(cwd, ["release", "--release", "REL-0001", "--yes"]);
       expect(result1.status, result1.combined).toBe(0);
 
       const snapshot2 = snapshotFixture(ctx.root);
 
       // Second run — must return idle (checklist already present)
-      const result2 = runPdt(cwd, ["release", "--release", "REL-0001", "--yes"]);
+      const result2 = runPet(cwd, ["release", "--release", "REL-0001", "--yes"]);
       expect(result2.status, result2.combined).toBe(0);
       expect(result2.combined, "second run must report idle").toMatch(
         /deployment checklist|already has|idle|nothing/i,
@@ -136,7 +136,7 @@ describe("FEAT-0017 DevOps correctness (mock mode)", () => {
       const cwd = path.resolve(ctx.root, "..", "..");
       try {
         const snapshot = snapshotFixture(ctx.root);
-        const result = runPdt(cwd, ["release", "--release", "REL-0001", "--yes"]);
+        const result = runPet(cwd, ["release", "--release", "REL-0001", "--yes"]);
         expect(result.status, result.combined).toBe(0);
 
         const currRelease = snapshotFixture(ctx.root).get(

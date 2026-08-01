@@ -90,7 +90,10 @@ export function AgentPanel({ heading, runFn, onExit }: AgentPanelProps) {
         process.kill(process.pid, "SIGINT");
       }
     },
-    { isActive: isRawModeSupported },
+    // Ink derives isRawModeSupported from `stdin.isTTY`, which is `undefined`
+    // (not false) on a pipe, and useInput only skips on a strict `=== false`.
+    // Without coercion the guard silently fails and setRawMode throws.
+    { isActive: isRawModeSupported === true },
   );
 
   const statusLine =

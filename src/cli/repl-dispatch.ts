@@ -13,6 +13,7 @@ import { runDevelop } from "./develop-cmd.js";
 import { runQa } from "./qa-cmd.js";
 import { runRelease } from "./release-cmd.js";
 import { runNew } from "./new-cmd.js";
+import { runRejectSolutionHypothesis } from "./reject-cmd.js";
 import { runTaskDone } from "./task-cmd.js";
 import type { ExecuteCallbacks } from "@/agents/executor.js";
 
@@ -38,6 +39,26 @@ export async function dispatchReplCommand(
     if (kind === "feature") return runAcceptFeature(id, { yes: true });
     if (kind === "qa-plan") return runAcceptQaPlan(id, { yes: true });
     if (kind === "release") return runAcceptRelease(id, { yes: true });
+  }
+
+  if (sub === "reject") {
+    const [kind, id] = args;
+    if (!id) return 1;
+    // Rationale is free text, so it is everything after --rationale, not a single token.
+    const flag = args.indexOf("--rationale");
+    const rationale =
+      flag >= 0
+        ? args
+            .slice(flag + 1)
+            .join(" ")
+            .replace(/^["']|["']$/g, "")
+        : undefined;
+    if (kind === "solution-hypothesis") {
+      return runRejectSolutionHypothesis(id, {
+        yes: true,
+        ...(rationale !== undefined ? { rationale } : {}),
+      });
+    }
   }
 
   if (sub === "deliver") {

@@ -3,9 +3,9 @@ import { createModel } from "@/llm/provider-factory.js";
 import { loadPrompt } from "./load-prompt.js";
 import { permissionsForRole } from "./path-permissions.js";
 import { createOrchestratorTools } from "./orchestrator-tools.js";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 
-export async function createOrchestratorAgent(docRoot: string, logger: PdtLogger) {
+export async function createOrchestratorAgent(docRoot: string, logger: PetLogger) {
   const tools = createOrchestratorTools(docRoot, logger);
 
   const backend = new FilesystemBackend({

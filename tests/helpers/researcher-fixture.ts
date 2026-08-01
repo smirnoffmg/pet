@@ -13,15 +13,15 @@ export interface ResearcherFixtureContext {
  * Creates a fresh researcher correctness fixture in a temp directory.
  *
  * Layout (relative to ctx.root = <tmp>/doc/product):
- *   hypotheses/0001-hyp-proposed.md            — proposed, empty Evidence  (T1 / T5 target)
- *   hypotheses/0002-hyp-proposed-with-evidence.md — proposed, Evidence populated (T4 target)
- *   hypotheses/0003-hyp-accepted.md             — accepted (T2 gate target)
- *   hypotheses/0004-hyp-invalidated.md          — invalidated (T3 gate target)
- *   solution_hypotheses/0001-sol-for-accepted-hyp.md — SOL linked to PROB-0003 so that
+ *   00-problem-hypotheses/0001-hyp-proposed.md   — proposed, empty Evidence (T1 / T5 target)
+ *   00-problem-hypotheses/0002-hyp-proposed-with-evidence.md — proposed, Evidence populated (T4)
+ *   00-problem-hypotheses/0003-hyp-accepted.md   — accepted (T2 gate target)
+ *   00-problem-hypotheses/0004-hyp-invalidated.md — invalidated (T3 gate target)
+ *   02-solution-hypotheses/0001-sol-for-accepted-hyp.md — SOL linked to PROB-0003 so that
  *       reconcileDiscovery returns idle (no commands) for T2, keeping zero diffs.
- *   features/0001-sentinel.md                   — side-effect detection
- *   tasks/0001-sentinel.md                      — side-effect detection
- *   metrics/0001-sentinel.md                    — side-effect detection
+ *   03-features/0001-sentinel.md                 — side-effect detection
+ *   04-tasks/0001-sentinel.md                    — side-effect detection
+ *   01-metrics/0001-sentinel.md                  — side-effect detection
  *   orchestration/decisions.md                  — append-only log required by discover-cmd
  *
  * The CLI cwd for pet invocations must be path.resolve(ctx.root, '..', '..') so that

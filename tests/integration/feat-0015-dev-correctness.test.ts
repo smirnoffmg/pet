@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const petJs = path.join(repoRoot, "dist", "pet.js");
 
-function runPdt(
+function runPet(
   cwd: string,
   args: string[],
 ): { status: number | null; stdout: string; stderr: string; combined: string } {
@@ -36,7 +36,7 @@ describe("FEAT-0015 Dev correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
+      const result = runPet(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
       expect(result.status, result.combined).toBe(0);
 
       const current = snapshotFixture(ctx.root);
@@ -80,7 +80,7 @@ describe("FEAT-0015 Dev correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["develop", "--task", "TASK-0002", "--yes"]);
+      const result = runPet(cwd, ["develop", "--task", "TASK-0002", "--yes"]);
 
       // Done task must be rejected with non-zero exit
       expect(result.status, `Expected non-zero exit. Output: ${result.combined}`).not.toBe(0);
@@ -96,7 +96,7 @@ describe("FEAT-0015 Dev correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       const snapshot = snapshotFixture(ctx.root);
-      const result = runPdt(cwd, ["develop", "--task", "TASK-9999", "--yes"]);
+      const result = runPet(cwd, ["develop", "--task", "TASK-9999", "--yes"]);
 
       expect(result.status, `Expected non-zero exit. Output: ${result.combined}`).not.toBe(0);
 
@@ -111,14 +111,14 @@ describe("FEAT-0015 Dev correctness (mock mode)", () => {
     const cwd = path.resolve(ctx.root, "..", "..");
     try {
       // First enrichment
-      const result1 = runPdt(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
+      const result1 = runPet(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
       expect(result1.status, result1.combined).toBe(0);
 
       // Snapshot after first run
       const snapshot2 = snapshotFixture(ctx.root);
 
       // Second enrichment — must not fail and may overwrite
-      const result2 = runPdt(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
+      const result2 = runPet(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
       expect(result2.status, result2.combined).toBe(0);
 
       // Still only the task file may change; all other files are stable
@@ -141,7 +141,7 @@ describe("FEAT-0015 Dev correctness (mock mode)", () => {
       const cwd = path.resolve(ctx.root, "..", "..");
       try {
         const snapshot = snapshotFixture(ctx.root);
-        const result = runPdt(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
+        const result = runPet(cwd, ["develop", "--task", "TASK-0001", "--yes"]);
         expect(result.status, result.combined).toBe(0);
 
         const currTask = snapshotFixture(ctx.root).get("04-tasks/0001-task-scaffold.md")!;

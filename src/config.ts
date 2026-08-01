@@ -1,13 +1,13 @@
 import path from "node:path";
 import os from "node:os";
 
-export type PdtConfig = {
+export type PetConfig = {
   costConfirmThresholdUsd: number;
   mockAgents: boolean;
   verbose: boolean;
 };
 
-export function loadConfig(): PdtConfig {
+export function loadConfig(): PetConfig {
   return {
     costConfirmThresholdUsd: Number.parseFloat(process.env["PET_COST_CONFIRM_THRESHOLD"] ?? "0.5"),
     mockAgents: process.env["PET_MOCK_AGENTS"] === "1",

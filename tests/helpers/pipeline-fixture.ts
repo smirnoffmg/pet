@@ -18,15 +18,15 @@ export interface PipelineFixtureContext {
  *   doc/
  *     adr/                             — empty; Architect may write here
  *     product/
- *       hypotheses/
+ *       00-problem-hypotheses/
  *         0001-users-need-faster-onboarding.md   — PROB-0001, proposed, empty Evidence
- *       metrics/
+ *       01-metrics/
  *         0001-time-to-first-value.md            — MET-0001, proposed (FK target for SOL)
- *       solution_hypotheses/           — empty; SolutionDesigner writes here
- *       features/                      — empty; FeatureDesigner writes here
- *       tasks/                         — empty; TechLead / Dev writes here
- *       qa_plans/                      — empty; QA writes here
- *       releases/                      — empty; DevOps writes here
+ *       02-solution-hypotheses/        — empty; SolutionDesigner writes here
+ *       03-features/                   — empty; FeatureDesigner writes here
+ *       04-tasks/                      — empty; TechLead / Dev writes here
+ *       05-qa-plans/                   — empty; QA writes here
+ *       06-releases/                   — empty; DevOps writes here
  *       orchestration/
  *         decisions.md                 — empty audit log (required by CLI infrastructure)
  *

@@ -7,7 +7,7 @@ export type LoggerOptions = {
   logPath?: string;
 };
 
-export type PdtLogger = {
+export type PetLogger = {
   info: (message: string) => void;
   verbose: (message: string) => void;
   /** Always written to session log and stderr (API usage / artifact outcomes). */
@@ -18,7 +18,7 @@ export function isVerboseEnv(): boolean {
   return process.env["PET_VERBOSE"] === "1";
 }
 
-export function createLogger(options: LoggerOptions): PdtLogger {
+export function createLogger(options: LoggerOptions): PetLogger {
   const write = (level: "info" | "verbose" | "outcome", message: string): void => {
     const line = `${new Date().toISOString()} [${level}] ${message}`;
     if (options.logPath) {

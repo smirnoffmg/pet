@@ -153,15 +153,38 @@ export function buildRows(
     qaPlansByFeat.set(fid, [...(qaPlansByFeat.get(fid) ?? []), qa]);
   }
 
+  const rejectionRationaleById = new Map<string, string>();
+  for (const sol of artifacts.filter((a) => a.kind === "solution_hypothesis")) {
+    const solFm = sol.frontmatter as SolutionHypothesisFrontmatter;
+    if (solFm.status === "rejected" && solFm.rejection_rationale) {
+      rejectionRationaleById.set(solFm.id as string, solFm.rejection_rationale);
+    }
+  }
+
   function maybeInjectActions(id: string, depth: number): void {
     if (expanded !== id) return;
-    if (expandedActions.length === 0) {
+
+    // A rejected alternative has no next action, so its rationale — the whole
+    // reason the artifact was kept — would otherwise be invisible in the tree.
+    const rationale = rejectionRationaleById.get(id);
+    if (rationale) {
       rows.push({
         type: "action",
-        action: { command: "(no actions available)", reason: "" },
+        action: { command: `rejected: ${rationale}`, reason: "" },
         actionIndex: -1,
         depth,
       });
+    }
+
+    if (expandedActions.length === 0) {
+      if (!rationale) {
+        rows.push({
+          type: "action",
+          action: { command: "(no actions available)", reason: "" },
+          actionIndex: -1,
+          depth,
+        });
+      }
     } else {
       expandedActions.forEach((action, actionIndex) => {
         rows.push({ type: "action", action, actionIndex, depth });
@@ -253,9 +276,10 @@ export function buildRows(
 
 // ─── Subcomponents ───────────────────────────────────────────────────────────
 
-function statusColor(status: string): "green" | "yellow" | "gray" | "blue" | "cyan" {
+function statusColor(status: string): "green" | "yellow" | "gray" | "blue" | "cyan" | "red" {
   if (status === "accepted" || status === "done") return "green";
   if (status === "superseded") return "gray";
+  if (status === "rejected") return "red";
   if (status === "in_progress") return "blue";
   if (status === "review") return "cyan";
   return "yellow";
@@ -813,7 +837,10 @@ export function TreeUI({ docRoot, repoRoot, repoName, branch, onExit }: TreeUIPr
         onExit(0);
       }
     },
-    { isActive: isRawModeSupported },
+    // `isRawModeSupported` is `stdin.isTTY`, i.e. `undefined` on a pipe, and
+    // useInput only skips when isActive is strictly `false` — coerce or the
+    // guard does nothing and setRawMode throws.
+    { isActive: isRawModeSupported === true },
   );
 
   if (scanError !== null) {

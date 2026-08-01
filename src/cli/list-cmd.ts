@@ -40,9 +40,12 @@ function title(artifact: ParsedArtifact): string {
   return match?.[1]?.trim() ?? "(no title)";
 }
 
+const LEGEND = "  Legend: + accepted  ~ proposed  × rejected  - superseded\n";
+
 function badge(status: string): string {
   if (status === "accepted") return "+";
   if (status === "superseded") return "-";
+  if (status === "rejected") return "×";
   return "~";
 }
 
@@ -62,7 +65,7 @@ function active(artifact: ParsedArtifact): boolean {
 }
 
 function printPipeline(artifacts: ParsedArtifact[]): void {
-  console.log("  Legend: + accepted  ~ proposed  - superseded\n");
+  console.log(LEGEND);
 
   const hyps = artifacts.filter((a) => a.kind === "hypothesis" && active(a)).sort(byId);
   const sols = artifacts.filter((a) => a.kind === "solution_hypothesis");
@@ -117,7 +120,7 @@ function printKindList(artifacts: ParsedArtifact[], kind: ArtifactKind): void {
     console.log(`No ${kind} artifacts found.`);
     return;
   }
-  console.log("  Legend: + accepted  ~ proposed  - superseded\n");
+  console.log(LEGEND);
   for (const artifact of filtered) {
     row("", artifact);
   }

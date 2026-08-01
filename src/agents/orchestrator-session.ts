@@ -1,6 +1,6 @@
 import type { BaseMessageLike } from "@langchain/core/messages";
 import { loadConfig } from "@/config.js";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 import { createOrchestratorAgent } from "./orchestrator.js";
 import { createMockOrchestratorAgent } from "./mock-orchestrator.js";
 import { extractLastAssistantText } from "./message-utils.js";
@@ -10,7 +10,7 @@ import type { ChatTurnAgent } from "./mock-orchestrator.js";
 
 export async function createChatOrchestratorAgent(
   docRoot: string,
-  logger: PdtLogger,
+  logger: PetLogger,
 ): Promise<ChatTurnAgent> {
   if (loadConfig().mockAgents) {
     logger.verbose("Using mock orchestrator agent (PET_MOCK_AGENTS=1)");

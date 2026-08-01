@@ -7,5 +7,12 @@ export function fmtTokens(n: number): string {
 }
 
 export function fmtUsage(u: RunUsage): string {
-  return `${fmtTokens(u.inputTokens)} in / ${fmtTokens(u.outputTokens)} out · ~$${u.costUsd.toFixed(3)}`;
+  const base = `${fmtTokens(u.inputTokens)} in / ${fmtTokens(u.outputTokens)} out`;
+  // Only shown when the cache actually did something — an unconditional "0%
+  // cached" on every non-Anthropic run would be noise.
+  const cached =
+    u.inputTokens > 0 && u.cacheReadTokens > 0
+      ? ` · ${Math.round((u.cacheReadTokens / u.inputTokens) * 100)}% cached`
+      : "";
+  return `${base}${cached} · ~$${u.costUsd.toFixed(3)}`;
 }

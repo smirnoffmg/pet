@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const petJs = path.join(repoRoot, "dist", "pet.js");
 
-function runPdt(cwd: string, args: string[]): { status: number | null; combined: string } {
+function runPet(cwd: string, args: string[]): { status: number | null; combined: string } {
   const r = spawnSync(process.execPath, [petJs, ...args], {
     cwd,
     encoding: "utf8",
@@ -38,12 +38,12 @@ describe("FEAT-0005 mock discover (isolated fixture)", () => {
       const featDir = path.join(ctx.productRoot, "03-features");
 
       // --- Step 1: PROB-0001 proposed + empty evidence → Researcher ---
-      const dry1 = runPdt(tmp, ["discover", "--hypothesis", "PROB-0001", "--dry-run"]);
+      const dry1 = runPet(tmp, ["discover", "--hypothesis", "PROB-0001", "--dry-run"]);
       expect(dry1.status, dry1.combined).toBe(0);
       expect(dry1.combined).toContain("spawn Researcher for PROB-0001");
       expect(dry1.combined).toContain("(dry-run: no agents executed)");
 
-      const run1 = runPdt(tmp, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
+      const run1 = runPet(tmp, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
       expect(run1.status, run1.combined).toBe(0);
 
       const hypPath = path.join(
@@ -54,7 +54,7 @@ describe("FEAT-0005 mock discover (isolated fixture)", () => {
       expect(hypRaw).toMatch(/## Evidence\s*\n\s*\S/);
 
       // --- Step 2: HITL — accept the hypothesis ---
-      const accept1 = runPdt(tmp, ["accept", "hypothesis", "PROB-0001", "--yes"]);
+      const accept1 = runPet(tmp, ["accept", "hypothesis", "PROB-0001", "--yes"]);
       expect(accept1.status, accept1.combined).toBe(0);
       expect(accept1.combined).toContain("Accepted PROB-0001");
 
@@ -62,11 +62,11 @@ describe("FEAT-0005 mock discover (isolated fixture)", () => {
       expect(hypRawAfter).toMatch(/^status:\s*accepted/m);
 
       // --- Step 3: PROB-0001 accepted, no SOL- → SolutionDesigner ---
-      const dry2 = runPdt(tmp, ["discover", "--hypothesis", "PROB-0001", "--dry-run"]);
+      const dry2 = runPet(tmp, ["discover", "--hypothesis", "PROB-0001", "--dry-run"]);
       expect(dry2.status, dry2.combined).toBe(0);
       expect(dry2.combined).toContain("spawn SolutionDesigner for PROB-0001");
 
-      const run2 = runPdt(tmp, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
+      const run2 = runPet(tmp, ["discover", "--hypothesis", "PROB-0001", "--yes"]);
       expect(run2.status, run2.combined).toBe(0);
       expect(fileCount(solDir)).toBeGreaterThan(0);
 
@@ -80,26 +80,26 @@ describe("FEAT-0005 mock discover (isolated fixture)", () => {
         throw new Error("No SOL- artifact found after SolutionDesigner ran");
       })();
 
-      const accept2 = runPdt(tmp, ["accept", "solution-hypothesis", solId, "--yes"]);
+      const accept2 = runPet(tmp, ["accept", "solution-hypothesis", solId, "--yes"]);
       expect(accept2.status, accept2.combined).toBe(0);
       expect(accept2.combined).toContain(`Accepted ${solId}`);
 
       // --- Step 5: SOL- accepted, no FEAT- → FeatureDesigner ---
-      const dry3 = runPdt(tmp, ["discover", "--solution-hypothesis", solId, "--dry-run"]);
+      const dry3 = runPet(tmp, ["discover", "--solution-hypothesis", solId, "--dry-run"]);
       expect(dry3.status, dry3.combined).toBe(0);
       expect(dry3.combined).toContain("spawn FeatureDesigner for");
 
-      const run3 = runPdt(tmp, ["discover", "--solution-hypothesis", solId, "--yes"]);
+      const run3 = runPet(tmp, ["discover", "--solution-hypothesis", solId, "--yes"]);
       expect(run3.status, run3.combined).toBe(0);
       expect(fileCount(featDir)).toBeGreaterThan(0);
 
       // --- Step 6: Idempotency — second discover on SOL- emits no commands ---
-      const dry4 = runPdt(tmp, ["discover", "--solution-hypothesis", solId, "--dry-run"]);
+      const dry4 = runPet(tmp, ["discover", "--solution-hypothesis", solId, "--dry-run"]);
       expect(dry4.status, dry4.combined).toBe(0);
       expect(dry4.combined).not.toContain("spawn FeatureDesigner");
 
       // --- Step 7: Validate the whole fixture tree ---
-      const validate = runPdt(tmp, ["validate"]);
+      const validate = runPet(tmp, ["validate"]);
       expect(validate.status, validate.combined).toBe(0);
     } finally {
       ctx.cleanup();

@@ -1,5 +1,5 @@
 import type { BaseMessageLike } from "@langchain/core/messages";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 
 export type ChatTurnResult = { messages: unknown[] };
 
@@ -10,7 +10,7 @@ export type ChatTurnAgent = {
 const MOCK_REPLY =
   "[pet chat mock] PET_MOCK_AGENTS=1 — no LLM call made. Unset it and configure a provider API key for real orchestrator responses.";
 
-export function createMockOrchestratorAgent(docRoot: string, logger: PdtLogger): ChatTurnAgent {
+export function createMockOrchestratorAgent(docRoot: string, logger: PetLogger): ChatTurnAgent {
   void docRoot;
   return {
     invoke: ({ messages }) => {

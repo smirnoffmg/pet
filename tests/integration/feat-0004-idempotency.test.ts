@@ -21,7 +21,7 @@ function orchestrationBulletCount(orchPath: string): number {
   return n;
 }
 
-function runPdt(cwd: string, args: string[]): { status: number | null; combined: string } {
+function runPet(cwd: string, args: string[]): { status: number | null; combined: string } {
   const r = spawnSync(process.execPath, [petJs, ...args], {
     cwd,
     encoding: "utf8",
@@ -76,7 +76,7 @@ describe("FEAT-0013 idempotency contract (ADR-0008 §2)", () => {
       const orch = path.join(ctx.productRoot, "orchestration/decisions.md");
       const beforeOrch = orchestrationBulletCount(orch);
 
-      const dry = runPdt(ctx.repoRoot, ["deliver", "--feature", "FEAT-0013", "--dry-run"]);
+      const dry = runPet(ctx.repoRoot, ["deliver", "--feature", "FEAT-0013", "--dry-run"]);
       expect(dry.status).toBe(0);
       // The exact idle reason depends on whether tasks are open or done,
       // but the idempotency contract (ADR-0008 §2) is: no spawn commands either way.

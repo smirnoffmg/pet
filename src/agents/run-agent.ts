@@ -8,7 +8,7 @@ import {
   requiresExplicitToolGuidance,
 } from "@/llm/provider-factory.js";
 import { loadMcpTools } from "@/llm/mcp-tools.js";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 import { createLogger } from "@/log.js";
 import { loadPrompt, type PromptRole } from "./load-prompt.js";
 import { permissionsForRole, type AgentRole } from "./path-permissions.js";
@@ -47,7 +47,7 @@ export async function runLiveAgent(
   role: AgentRole,
   docRoot: string,
   brief: AgentBrief,
-  logger: PdtLogger = createLogger({ verbose: loadConfig().verbose }),
+  logger: PetLogger = createLogger({ verbose: loadConfig().verbose }),
   commandKind?: SubagentCommand["kind"],
   onToolCall?: (event: ToolCallEvent) => void,
 ): Promise<unknown> {
@@ -120,7 +120,9 @@ export async function runLiveAgent(
     recordUsage(usage);
     const usd = estimateUsdFromTokens(usage);
     logger.outcome(
-      `Claude usage: ${usage.inputTokens} input + ${usage.outputTokens} output tokens (~$${usd.toFixed(3)} at Sonnet list rates)`,
+      `Claude usage: ${usage.inputTokens} input (${usage.cacheReadTokens} cache read, ` +
+        `${usage.cacheCreationTokens} cache write) + ${usage.outputTokens} output tokens ` +
+        `(~$${usd.toFixed(3)} at Sonnet list rates)`,
     );
   } else {
     logger.outcome("Claude usage: token metadata not available on this run");

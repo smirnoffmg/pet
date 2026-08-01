@@ -1,0 +1,209 @@
+$ pet init
+Scanning project...
+Synthesizing project context with LLM...
+LLM call failed: ANTHROPIC_API_KEY is required when PET_LLM_PROVIDER=anthropic
+
+$ pet new hypothesis Users abandon checkout at the shipping step
+Created /private<REPO>/doc/product/00-problem-hypotheses/0001-users-abandon-checkout-at-the-shipping-step.md
+Run `pet validate` to check the repository.
+
+$ pet new metric --hypothesis PROB-0001 Checkout completion rate
+Created /private<REPO>/doc/product/01-metrics/0001-checkout-completion-rate.md
+Run `pet validate` to check the repository.
+
+$ pet discover --hypothesis PROB-0001 --yes
+spawn Researcher for PROB-0001 "Users abandon checkout at the shipping step"
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet discover — PROB-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] Planned API work: spawn Researcher for PROB-0001 "Users abandon checkout at the shipping step"
+<TS> [outcome] ▶ spawn Researcher for PROB-0001 "Users abandon checkout at the shipping step"
+<TS> [outcome] Artifacts changed:
+  ~ product/00-problem-hypotheses/0001-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn Researcher for PROB-0001 "Users abandon checkout at the shipping step" (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet accept metric MET-0001 --yes
+Accepted MET-0001.
+Warning: no git history found — immutability checks skipped
+
+$ pet accept hypothesis PROB-0001 --yes
+Accepted PROB-0001. Run `pet validate` before commit.
+Warning: no git history found — immutability checks skipped
+
+$ pet discover --hypothesis PROB-0001 --yes
+spawn SolutionDesigner for PROB-0001 "Users abandon checkout at the shipping step"
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet discover — PROB-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] Planned API work: spawn SolutionDesigner for PROB-0001 "Users abandon checkout at the shipping step"
+<TS> [outcome] ▶ spawn SolutionDesigner for PROB-0001 "Users abandon checkout at the shipping step"
+<TS> [outcome] Artifacts changed:
+  + product/02-solution-hypotheses/0001-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn SolutionDesigner for PROB-0001 "Users abandon checkout at the shipping step" (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet new solution-hypothesis --metric MET-0001 Third-party address autofill
+Created /private<REPO>/doc/product/02-solution-hypotheses/0002-third-party-address-autofill.md
+Run `pet validate` to check the repository.
+
+$ pet reject solution-hypothesis SOL-0002 --rationale fails GDPR review for prospect data --yes
+Rejected SOL-0002. Run `pet validate` before commit.
+Warning: no git history found — immutability checks skipped
+
+$ pet list sol
+  Legend: + accepted  ~ proposed  × rejected  - superseded
+
+~ SOL-0001   proposed    Solution for Users abandon checkout at the shipping step
+× SOL-0002   rejected    Third-party address autofill
+
+$ pet accept solution-hypothesis SOL-0001 --yes
+Accepted SOL-0001. Run `pet discover --solution-hypothesis SOL-0001` next.
+Warning: no git history found — immutability checks skipped
+
+$ pet discover --solution-hypothesis SOL-0001 --yes
+spawn FeatureDesigner for SOL-0001 "Solution for Users abandon checkout at the shipping step"
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet discover — SOL-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] Planned API work: spawn FeatureDesigner for SOL-0001 "Solution for Users abandon checkout at the shipping step"
+<TS> [outcome] ▶ spawn FeatureDesigner for SOL-0001 "Solution for Users abandon checkout at the shipping step"
+<TS> [outcome] Artifacts changed:
+  + product/03-features/0001-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn FeatureDesigner for SOL-0001 "Solution for Users abandon checkout at the shipping step" (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet discover --feature FEAT-0001 --yes
+spawn Designer(enrich) for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." via SOL-0001
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet discover — FEAT-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] Planned API work: spawn Designer(enrich) for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." via SOL-0001
+<TS> [outcome] ▶ spawn Designer(enrich) for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." via SOL-0001
+<TS> [outcome] Artifacts changed:
+  ~ product/03-features/0001-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn Designer(enrich) for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." via SOL-0001 (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet accept feature FEAT-0001 --yes
+Accepted FEAT-0001. Run `pet deliver --feature FEAT-0001` next.
+Warning: no git history found — immutability checks skipped
+
+$ pet deliver --feature FEAT-0001 --yes
+spawn Architect for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..."
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet deliver — FEAT-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] ▶ spawn Architect for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..."
+<TS> [outcome] Artifacts changed:
+  ~ product/03-features/0001-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn Architect for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet deliver --feature FEAT-0001 --yes
+spawn TechLead for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..."
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet deliver — FEAT-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] ▶ spawn TechLead for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..."
+<TS> [outcome] Artifacts changed:
+  + product/04-tasks/0001-implement-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn TechLead for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet develop --task TASK-0001 --yes
+spawn Dev for TASK-0001 "Implement Feature for Solution for Users abandon checkout at..." (FEAT-0001)
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet develop — TASK-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] ▶ spawn Dev for TASK-0001 "Implement Feature for Solution for Users abandon checkout at..." (FEAT-0001)
+<TS> [outcome] Artifacts changed:
+  ~ product/04-tasks/0001-implement-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn Dev for TASK-0001 "Implement Feature for Solution for Users abandon checkout at..." (FEAT-0001) (<T>s)
+Warning: no git history found — immutability checks skipped
+
+$ pet task done TASK-0001
+Marked TASK-0001 as done and archived to doc/product/04-tasks/archive/0001-implement-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md.
+
+$ pet qa --feature FEAT-0001 --yes
+spawn QA for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." [TASK-0001]
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet qa — FEAT-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] ▶ spawn QA for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." [TASK-0001]
+<TS> [outcome] Artifacts changed:
+  + product/05-qa-plans/0001-qa-plan-for-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+<TS> [outcome] ✓ spawn QA for FEAT-0001 "Feature for Solution for Users abandon checkout at the shipp..." [TASK-0001] (<T>s)
+
+$ pet accept qa-plan QA-0001 --yes
+Accepted QA-0001.
+
+$ pet new release --features FEAT-0001 v0.1.0
+Created /private<REPO>/doc/product/06-releases/0001-v0-1-0.md
+Run `pet validate` to check the repository.
+
+$ pet release --release REL-0001 --yes
+spawn DevOps for REL-0001 "v0.1.0" [FEAT-0001]
+Session: ~/.local/share/pet/<HASH>/sessions/<SESSION>/
+Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
+╭────────────────────────────────────────────────────────╮
+│ pet release — REL-0001 │
+│ │
+│ ✓ Done in <T>s │
+╰────────────────────────────────────────────────────────╯
+<TS> [outcome] ▶ spawn DevOps for REL-0001 "v0.1.0" [FEAT-0001]
+<TS> [outcome] Artifacts changed:
+  ~ product/06-releases/0001-v0-1-0.md
+<TS> [outcome] ✓ spawn DevOps for REL-0001 "v0.1.0" [FEAT-0001] (<T>s)
+
+$ pet accept release REL-0001 --yes
+Accepted REL-0001.
+
+$ pet validate
+Validation passed.
+
+$ pet list
+  Legend: + accepted  ~ proposed  × rejected  - superseded
+
++ PROB-0001  accepted    Users abandon checkout at the shipping step
+  + SOL-0001   accepted    Solution for Users abandon checkout at the shipping step
+    + FEAT-0001  accepted    Feature for Solution for Users abandon checkout at the shipping step
+  × SOL-0002   rejected    Third-party address autofill
+
++ MET-0001   accepted    Checkout completion rate
++ REL-0001   accepted    v0.1.0
+
+$ pet next
+Pipeline is idle — no pending actions.

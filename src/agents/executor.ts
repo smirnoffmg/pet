@@ -1,6 +1,6 @@
 import type { SubagentCommand } from "./types.js";
 import { loadConfig } from "@/config.js";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 import { captureDocSnapshot, diffDocSnapshot } from "./doc-snapshot.js";
 import { appendOrchestrationDecision } from "@/controllers/orchestration-log.js";
 import {
@@ -71,7 +71,7 @@ export async function executeCommands(
   docRoot: string,
   commands: SubagentCommand[],
   dryRun: boolean,
-  logger: PdtLogger,
+  logger: PetLogger,
   callbacks?: ExecuteCallbacks,
 ): Promise<void> {
   if (dryRun) {

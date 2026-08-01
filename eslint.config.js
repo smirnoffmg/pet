@@ -48,6 +48,7 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "node_modules/**",
+      "doc/**",
       "esbuild.config.js",
       "prettier.config.js",
       "eslint.config.js",

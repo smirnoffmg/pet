@@ -1,6 +1,6 @@
 # Contributing to PET
 
-Thanks for your interest in contributing to the Product Engineer Toolkit.
+Thanks for your interest in contributing to the Product Engineering Toolkit.
 
 ## Development setup
 

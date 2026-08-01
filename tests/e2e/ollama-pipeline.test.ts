@@ -5,11 +5,15 @@
  *   PET_LLM_PROVIDER=ollama PET_LLM_MODEL=<model> npx vitest run tests/e2e/ollama-pipeline.test.ts
  *   npm run test:ollama
  *
- * Minimum model requirement: 70B+ with tool-calling support (see ADR-0015).
- * Verified capable: llama3.3, mistral-nemo, qwen2.5:72b, gemma3:27b.
- * 7-8B models (qwen3:8b, llama3.1:8b, etc.) are NOT capable of autonomous
- * multi-step tool execution in the deepagents context — they complete individual
- * tool calls but do not chain ls → read_file → write_file without external prompting.
+ * Model requirement is behavioural, not a parameter count (ADR-0015): the model
+ * must chain `ls → read_file → write_file` unaided under deepagents. Verified
+ * capable so far: llama3.3, mistral-nemo (12B), qwen2.5:72b, gemma3:27b — the
+ * list mixes sizes precisely because size is a poor predictor.
+ *
+ * 7-8B models (qwen3:8b, qwen2.5:7b, llama3.1:8b) complete individual tool calls
+ * but do not chain them, so the capability assertions below will fail for them.
+ * That is a verdict about the model, not about this code: if the HARD permission
+ * assertions pass and only the SOFT capability ones fail, nothing is broken.
  *
  * The suite is SKIPPED automatically when PET_LLM_PROVIDER is not "ollama" or
  * PET_LLM_MODEL is unset — invisible to normal CI (PET_MOCK_AGENTS=1).
@@ -30,14 +34,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createLogger } from "@/log.js";
 import {
   problemHypothesisIdSchema,
+  metricIdSchema,
   solutionHypothesisIdSchema,
   featureIdSchema,
   taskIdSchema,
   releaseIdSchema,
 } from "@/schemas/ids.js";
-import { runLiveAgent } from "@/agents/run-agent.js";
+import { runLiveAgent as runLiveAgentRaw } from "@/agents/run-agent.js";
 import { writeArtifact } from "@/store/index.js";
 import { snapshotFixture } from "../helpers/fixture-diff.js";
+import { runAgentCapturingDenials } from "../helpers/agent-error.js";
 import { createPipelineFixture } from "../helpers/pipeline-fixture.js";
 import type { PipelineFixtureContext } from "../helpers/pipeline-fixture.js";
 import type { FixtureSnapshot } from "../helpers/fixture-diff.js";
@@ -125,6 +131,34 @@ function markTaskDone(filePath: string): void {
 }
 
 /**
+ * Model faults the system refused since the last boundary assertion.
+ *
+ * A weak model regularly invents a path outside its allow-list. deepagents
+ * surfaces the refusal as a thrown error, which would abort the step — but the
+ * refusal is the boundary doing its job, so it is recorded and reported softly
+ * instead. A throw that is not a refusal still propagates.
+ */
+const pendingModelFaults: string[] = [];
+
+async function runLiveAgent(...args: Parameters<typeof runLiveAgentRaw>): Promise<void> {
+  const outcome = await runAgentCapturingDenials(() => runLiveAgentRaw(...args));
+  if (outcome.fatal !== null) throw outcome.fatal;
+  pendingModelFaults.push(...outcome.faults);
+}
+
+/**
+ * Guards a step on the artifact an earlier step should have produced.
+ *
+ * A weak model leaves it uncreated — a capability verdict the producing step has
+ * already recorded. Repeating it as a HARD failure here would bury the one real
+ * signal under a cascade, so this records softly and tells the step to skip.
+ */
+function upstreamPresent(value: string | undefined, message: string): value is string {
+  expect.soft(value, message).toBeDefined();
+  return value !== undefined;
+}
+
+/**
  * Assert permission boundary: files in `allowedPrefixes` may change; everything
  * else must be byte-identical to `before`. New files must also land in allowed dirs.
  *
@@ -137,6 +171,12 @@ function assertPermissionBoundary(
   stepLabel: string,
 ): void {
   const after = snapshotFixture(productRoot);
+
+  // SOFT: reaching for a forbidden path is a model failing, not the boundary.
+  const faults = pendingModelFaults.splice(0, pendingModelFaults.length);
+  expect
+    .soft(faults, `${stepLabel}: system refused invalid model behaviour (code is fine)`)
+    .toEqual([]);
 
   for (const [rel, content] of before) {
     if (allowedPrefixes.some((p) => rel.startsWith(p))) continue;
@@ -182,7 +222,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const hypPath = findArtifact(
-        path.join(ctx.productRoot, "hypotheses"),
+        path.join(ctx.productRoot, "00-problem-hypotheses"),
         (fm) => fm["id"] === "PROB-0001",
       );
       expect(hypPath, "PROB-0001 fixture file must exist").toBeDefined();
@@ -206,7 +246,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       acceptArtifact(hypPath!);
 
       // HARD: permission boundary
-      assertPermissionBoundary(before, ctx.productRoot, ["hypotheses/"], "Step 1");
+      assertPermissionBoundary(before, ctx.productRoot, ["00-problem-hypotheses/"], "Step 1");
 
       // SOFT: model capability (fails for models that don't chain tool calls — see ADR-0015)
       const updated = fs.readFileSync(hypPath!, "utf8");
@@ -226,13 +266,23 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const hypPath = findArtifact(
-        path.join(ctx.productRoot, "hypotheses"),
+        path.join(ctx.productRoot, "00-problem-hypotheses"),
         (fm) => fm["id"] === "PROB-0001",
       );
       expect(hypPath, "PROB-0001 must exist after Step 1").toBeDefined();
       const { title, body } = parseArtifact(hypPath!);
 
       const before = snapshotFixture(ctx.productRoot);
+
+      // `metrics` is required by SolutionDesignerBrief and is what the real
+      // DiscoveryLead passes. Omitting it type-checked anyway — AgentBrief is a
+      // union, so the literal matched a different member — and then crashed in
+      // buildUserMessage at runtime.
+      const metricPath = findArtifact(
+        path.join(ctx.productRoot, "01-metrics"),
+        (fm) => fm["problem_hypothesis_id"] === "PROB-0001",
+      );
+      const metric = metricPath ? parseArtifact(metricPath) : undefined;
 
       await runLiveAgent(
         "solution_designer",
@@ -241,6 +291,15 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
           hypothesisId: problemHypothesisIdSchema.parse("PROB-0001"),
           hypothesisTitle: title,
           hypothesisBody: body,
+          metrics: metric
+            ? [
+                {
+                  metricId: metricIdSchema.parse(metric.id),
+                  metricTitle: metric.title,
+                  metricBody: metric.body,
+                },
+              ]
+            : [],
         },
         logger,
         "spawn_solution_designer",
@@ -249,17 +308,17 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       assertPermissionBoundary(
         before,
         ctx.productRoot,
-        ["solution_hypotheses/", "metrics/"],
+        ["02-solution-hypotheses/", "01-metrics/"],
         "Step 2",
       );
 
       const solFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "solution_hypotheses"))
+        .readdirSync(path.join(ctx.productRoot, "02-solution-hypotheses"))
         .filter((f) => f.endsWith(".md"));
 
       // Accept the first SOL- BEFORE the capability assertion
       if (solFiles.length > 0) {
-        const solPath = path.join(ctx.productRoot, "solution_hypotheses", solFiles[0]!);
+        const solPath = path.join(ctx.productRoot, "02-solution-hypotheses", solFiles[0]!);
         acceptArtifact(solPath);
       }
 
@@ -276,13 +335,16 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const solPath = findArtifact(
-        path.join(ctx.productRoot, "solution_hypotheses"),
+        path.join(ctx.productRoot, "02-solution-hypotheses"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(
-        solPath,
-        "An accepted SOL- must exist after Step 2 (small models cannot pass — see ADR-0015)",
-      ).toBeDefined();
+      if (
+        !upstreamPresent(
+          solPath,
+          "An accepted SOL- must exist after Step 2 (small models cannot pass — see ADR-0015)",
+        )
+      )
+        return;
       const { id: solId, title: solTitle, body: solBody } = parseArtifact(solPath!);
 
       const before = snapshotFixture(ctx.productRoot);
@@ -299,14 +361,14 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         "spawn_feature_designer",
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["features/"], "Step 3");
+      assertPermissionBoundary(before, ctx.productRoot, ["03-features/"], "Step 3");
 
       const featFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "features"))
+        .readdirSync(path.join(ctx.productRoot, "03-features"))
         .filter((f) => f.endsWith(".md"));
 
       if (featFiles.length > 0) {
-        const featPath = path.join(ctx.productRoot, "features", featFiles[0]!);
+        const featPath = path.join(ctx.productRoot, "03-features", featFiles[0]!);
         acceptArtifact(featPath);
       }
 
@@ -322,10 +384,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(featPath, "An accepted FEAT- must exist after Step 3").toBeDefined();
+      if (!upstreamPresent(featPath, "An accepted FEAT- must exist after Step 3")) return;
       const {
         id: featId,
         title: featTitle,
@@ -336,7 +398,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       const solId = String(featFm["solution_hypothesis_id"] ?? "");
       const solPath = solId
         ? findArtifact(
-            path.join(ctx.productRoot, "solution_hypotheses"),
+            path.join(ctx.productRoot, "02-solution-hypotheses"),
             (fm) => fm["id"] === solId,
           )
         : undefined;
@@ -361,7 +423,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         "spawn_designer_enrich",
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["features/"], "Step 4");
+      assertPermissionBoundary(before, ctx.productRoot, ["03-features/"], "Step 4");
 
       const updatedBody = fs.readFileSync(featPath!, "utf8");
       expect
@@ -376,10 +438,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(featPath, "FEAT- must exist after Step 4").toBeDefined();
+      if (!upstreamPresent(featPath, "FEAT- must exist after Step 4")) return;
       const { id: featId, title: featTitle, body: featBody } = parseArtifact(featPath!);
 
       const before = snapshotFixture(ctx.productRoot);
@@ -396,7 +458,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       );
 
       // Architect may write to features/ (update review status) and adr/ (new ADR)
-      assertPermissionBoundary(before, ctx.productRoot, ["features/"], "Step 5");
+      assertPermissionBoundary(before, ctx.productRoot, ["03-features/"], "Step 5");
 
       const { frontmatter } = parseArtifact(featPath!);
       expect
@@ -414,10 +476,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(featPath, "FEAT- must exist after Step 5").toBeDefined();
+      if (!upstreamPresent(featPath, "FEAT- must exist after Step 5")) return;
       const { id: featId, title: featTitle, body: featBody } = parseArtifact(featPath!);
 
       const before = snapshotFixture(ctx.productRoot);
@@ -433,10 +495,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         logger,
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["tasks/"], "Step 6");
+      assertPermissionBoundary(before, ctx.productRoot, ["04-tasks/"], "Step 6");
 
       const taskFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "tasks"))
+        .readdirSync(path.join(ctx.productRoot, "04-tasks"))
         .filter((f) => f.endsWith(".md") && !f.includes("archive"));
       expect
         .soft(taskFiles.length, "Step 6: TechLead must create at least one TASK- file")
@@ -450,10 +512,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const taskPath = findArtifact(
-        path.join(ctx.productRoot, "tasks"),
+        path.join(ctx.productRoot, "04-tasks"),
         (fm) => fm["status"] === "todo",
       );
-      expect(taskPath, "A todo TASK- must exist after Step 6").toBeDefined();
+      if (!upstreamPresent(taskPath, "A todo TASK- must exist after Step 6")) return;
       const {
         id: taskId,
         title: taskTitle,
@@ -462,7 +524,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       } = parseArtifact(taskPath!);
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["id"] === String(taskFm["feature_id"] ?? ""),
       );
       const {
@@ -488,14 +550,14 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         "spawn_dev",
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["tasks/"], "Step 7");
+      assertPermissionBoundary(before, ctx.productRoot, ["04-tasks/"], "Step 7");
 
       // Mark all tasks done BEFORE capability assertion so Step 8 can proceed
       const allTaskFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "tasks"))
+        .readdirSync(path.join(ctx.productRoot, "04-tasks"))
         .filter((f) => f.endsWith(".md"));
       for (const f of allTaskFiles) {
-        markTaskDone(path.join(ctx.productRoot, "tasks", f));
+        markTaskDone(path.join(ctx.productRoot, "04-tasks", f));
       }
 
       const updatedTask = fs.readFileSync(taskPath!, "utf8");
@@ -511,19 +573,19 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(featPath, "FEAT- must exist for QA step").toBeDefined();
+      if (!upstreamPresent(featPath, "FEAT- must exist for QA step")) return;
       const { id: featId, title: featTitle, body: featBody } = parseArtifact(featPath!);
 
       const taskFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "tasks"))
+        .readdirSync(path.join(ctx.productRoot, "04-tasks"))
         .filter((f) => f.endsWith(".md"));
       const tasks = taskFiles
         .map((f) => {
           const { frontmatter, title, body } = parseArtifact(
-            path.join(ctx.productRoot, "tasks", f),
+            path.join(ctx.productRoot, "04-tasks", f),
           );
           return { id: String(frontmatter["id"] ?? ""), title, body };
         })
@@ -545,10 +607,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         "spawn_qa",
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["qa_plans/"], "Step 8");
+      assertPermissionBoundary(before, ctx.productRoot, ["05-qa-plans/"], "Step 8");
 
       const qaFiles = fs
-        .readdirSync(path.join(ctx.productRoot, "qa_plans"))
+        .readdirSync(path.join(ctx.productRoot, "05-qa-plans"))
         .filter((f) => f.endsWith(".md"));
       expect
         .soft(qaFiles.length, "Step 8: QA must create at least one QA plan file")
@@ -562,10 +624,10 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
       if (skip) return;
 
       const featPath = findArtifact(
-        path.join(ctx.productRoot, "features"),
+        path.join(ctx.productRoot, "03-features"),
         (fm) => fm["status"] === "accepted",
       );
-      expect(featPath, "FEAT- must exist for DevOps step").toBeDefined();
+      if (!upstreamPresent(featPath, "FEAT- must exist for DevOps step")) return;
       const { id: featId, title: featTitle, body: featBody } = parseArtifact(featPath!);
 
       // Create a proposed release artifact programmatically
@@ -605,7 +667,7 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         "spawn_devops",
       );
 
-      assertPermissionBoundary(before, ctx.productRoot, ["releases/"], "Step 9");
+      assertPermissionBoundary(before, ctx.productRoot, ["06-releases/"], "Step 9");
 
       const updatedRelease = fs.readFileSync(relPath, "utf8");
       expect

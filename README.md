@@ -84,6 +84,37 @@ Each artifact type carries only the sections relevant to its level:
 
 CI enforces schema validity, FK integrity, and the immutability rule on accepted artifacts.
 
+### Why only solutions can be rejected
+
+The terminal statuses are deliberately asymmetric, and the asymmetry is the point:
+
+| Kind                        | Terminal statuses beyond `superseded` |
+| --------------------------- | ------------------------------------- |
+| `PROB-`                     | `validated`, `invalidated`            |
+| `SOL-`                      | `rejected`                            |
+| `MET-` `FEAT-` `QA-` `REL-` | — (supersession only)                 |
+
+A problem hypothesis is a claim about the world, so reality settles it: you _validate_ or
+_invalidate_ it with evidence. A solution hypothesis is a choice among alternatives, so a
+human settles it: you _reject_ it, and `rejection_rationale` is then required by the schema.
+Everything else is neither a claim nor a choice — a feature that stops making sense is
+replaced by a better one, which is what supersession is for.
+
+This is why `pet reject` exists only for solution hypotheses:
+
+```bash
+pet reject solution-hypothesis SOL-0002 --rationale "fails GDPR review for prospect data"
+```
+
+Only `proposed` artifacts can be rejected. Rejecting something already `accepted` is not a
+rejection but a reversal, and reversals go through supersession so the original decision
+stays readable. Once committed, a rejected artifact is frozen like any other closed
+decision — the rationale cannot be reworded later, so write it for a reader two years out.
+
+Rejected alternatives are never deleted. That is the whole point: in two years someone will
+ask "why not bureau enrichment?", and the answer should be in the repository rather than in
+someone's memory.
+
 ---
 
 ## A cycle in practice
@@ -156,6 +187,27 @@ git clone https://github.com/smirnoffmg/pet
 cd pet
 npm install && npm run build && npm link
 ```
+
+---
+
+## How far the dogfooding actually goes
+
+`pet` manages its own roadmap through its own pipeline — but only the discovery half, and
+that limit is worth stating before you check.
+
+**Dogfooded.** `doc/product/` holds 1 problem hypothesis, 3 target metrics, 3 solution
+hypotheses and 6 features, all created and promoted through `pet new` / `pet discover` /
+`pet accept`.
+
+**Not dogfooded.** `04-tasks/`, `05-qa-plans/` and `06-releases/` do not exist. Every line
+of code in this repository was written outside the delivery pipeline, and the six recorded
+features are still `proposed` — the implementation ran ahead of the artifacts that were
+supposed to justify it. The delivery half is exercised by test fixtures, not by this repo's
+own history.
+
+So "`pet` writes itself with `pet`" is half true, and `ls doc/product/` is enough to find
+the other half. A tool about not losing the reasoning behind decisions should say which of
+its own decisions it failed to record.
 
 ---
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg width="767.38" height="142.14" xmlns="http://www.w3.org/2000/svg">
+<rect width="767.38" height="142.14" fill="#171717" rx="6.00" ry="6.00" x="0.00px" y="0.00px"/>
+<g font-family="JetBrains Mono, Menlo, DejaVu Sans Mono, monospace" font-size="13.00px" fill="#c4c4c4" clip-path="url(#terminalMask)">
+<text x="20.00px" y="50.60px" xml:space="preserve"><tspan xml:space="preserve" fill="#31BB71">❯</tspan><tspan xml:space="preserve"> pet list sol</tspan></text><text x="20.00px" y="66.20px" xml:space="preserve"><tspan xml:space="preserve">  Legend: + accepted  ~ proposed  × rejected  - superseded</tspan></text><text x="20.00px" y="81.80px" xml:space="preserve"/><text x="20.00px" y="97.40px" xml:space="preserve"><tspan xml:space="preserve">~ SOL-0001   proposed    Solution for Thin-file applicants are mispriced by the current model</tspan></text><text x="20.00px" y="113.00px" xml:space="preserve"><tspan xml:space="preserve">× SOL-0002   rejected    Third-party bureau enrichment for prospect data</tspan></text>
+</g>
+<svg x="0.00px" y="0.00px"><circle cx="13.50" cy="12.00" r="5.50" fill="#FF5A54"/><circle cx="32.50" cy="12.00" r="5.50" fill="#E6BF29"/><circle cx="51.50" cy="12.00" r="5.50" fill="#52C12B"/></svg></svg>

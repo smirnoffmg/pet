@@ -1,0 +1,556 @@
+\documentclass[11pt, aspectratio=169]{beamer}
+
+\usetheme{metropolis}
+\metroset{
+  numbering=fraction,
+  progressbar=foot,
+  block=fill,
+  sectionpage=none,
+}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{russian}
+\setotherlanguage{english}
+
+\setmainfont{Arial}
+\setsansfont{Arial}
+\setmonofont{Fira Code}
+
+\usepackage{graphicx}
+\usepackage{qrcode}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+
+\definecolor{acceptedGreen}{HTML}{2E7D32}
+\definecolor{acceptedFill}{HTML}{E8F5E9}
+\definecolor{rejectedGray}{HTML}{757575}
+\definecolor{rejectedFill}{HTML}{F5F5F5}
+\definecolor{taskBlue}{HTML}{1565C0}
+\definecolor{taskFill}{HTML}{E3F2FD}
+\definecolor{gapRed}{HTML}{C62828}
+\definecolor{slackPurple}{HTML}{4A154B}
+\definecolor{mutedText}{HTML}{616161}
+
+\definecolor{slackCardBorder}{HTML}{DDDDDD}
+
+\hypersetup{
+  colorlinks=true,
+  urlcolor=taskBlue,
+  linkcolor=.,
+}
+\setbeamerfont{footnote}{size=\scriptsize}
+
+\tikzset{
+  artifact accepted/.style={
+    draw=acceptedGreen, line width=0.8pt,
+    fill=acceptedFill,
+    rounded corners=2pt,
+    align=center, font=\small\sffamily,
+    inner sep=4pt
+  },
+  artifact rejected/.style={
+    draw=rejectedGray, line width=0.6pt, dashed,
+    fill=rejectedFill,
+    rounded corners=2pt,
+    align=center, font=\small\sffamily, text=rejectedGray,
+    inner sep=4pt
+  },
+  artifact task/.style={
+    draw=taskBlue, line width=0.6pt,
+    fill=taskFill,
+    rounded corners=2pt,
+    align=center, font=\footnotesize\sffamily,
+    inner sep=3pt
+  },
+  fk arrow/.style={
+    -{Stealth[length=2mm, width=2mm]},
+    line width=0.7pt,
+    draw=black!60
+  },
+  gap box/.style={
+    draw=gapRed, line width=0.8pt, dashed,
+    fill=gapRed!5,
+    rounded corners=3pt,
+    align=center,
+    inner sep=8pt
+  }
+}
+
+\newcommand{\artid}[1]{\texttt{\footnotesize #1}}
+\newcommand{\shot}[1]{%
+  \begin{center}
+    \includegraphics[width=0.92\textwidth, height=0.74\textheight, keepaspectratio]{img/shots/#1}
+  \end{center}
+}
+
+\title{Intent Debt}
+\subtitle{Потерянная цель и потерянный код}
+\author{\textit{Максим Смирнов}}
+\date{}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge\textbf{Intent Debt}}\\[0.35cm]
+    {\large\textcolor{mutedText}{Потерянная цель и потерянный код}}\\[1.1cm]
+    {\normalsize\textit{Максим Смирнов}}
+  \end{center}
+  \vfill
+\end{frame}
+
+% ---------------------------------------------------------------- 2
+\begin{frame}{Месяц назад}
+  % A real Mattermost window (local instance), not a mock-up: two aligned
+  % crops — channel header and conversation tail. Re-shoot: see mm/.
+  \begin{center}
+  \setlength{\fboxsep}{0pt}\setlength{\fboxrule}{0.6pt}%
+  \fcolorbox{slackCardBorder}{white}{%
+    \begin{minipage}{0.76\textwidth}
+      \includegraphics[width=\linewidth]{img/mattermost-header.png}\par\nointerlineskip
+      \includegraphics[width=\linewidth]{img/mattermost-message.png}%
+    \end{minipage}}
+  \end{center}
+
+  \begin{center}
+  \small
+  \textcolor{mutedText}{\textit{Через шесть недель фича в проде. Через полгода на ретро:
+  <<а precision на thin-file вырос?>>}}\\
+  \textcolor{mutedText}{\textit{Ответить некому --- нигде не записано, что мы этого ждали.}}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 3
+\begin{frame}{Что теряется по дороге}
+  \vspace{0.2cm}
+  \begin{center}
+  \begin{tikzpicture}
+    \node[draw=slackPurple, line width=0.6pt, fill=slackPurple!10,
+          rounded corners=2pt, minimum width=3cm, minimum height=1.1cm,
+          align=center, font=\small]
+          (start) at (0, 0) {Разговор:\\<<сделаем X, чтобы стало Y>>};
+
+    \node[draw=taskBlue, line width=0.6pt, fill=taskFill,
+          rounded corners=2pt, minimum width=3cm, minimum height=1.1cm,
+          align=center, font=\small]
+          (end) at (8, 0) {Результат: \\код в проде};
+
+    \draw[-{Stealth[length=4mm, width=4mm]}, line width=1.5pt, black!50]
+      (start.east) -- (end.west);
+
+    \node[gap box, minimum width=5.5cm] (gap) at (4, -2.2) {%
+      \textcolor{gapRed}{\textbf{пропасть}}\\[4pt]
+      \footnotesize какую метрику двигаем? какая была гипотеза?\\
+      \footnotesize что отбросили по дороге --- и почему?
+    };
+    \draw[-{Stealth[length=2mm]}, dashed, draw=gapRed, line width=0.7pt]
+      (gap.north) -- (4, -0.2);
+  \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 4
+\begin{frame}{У этой пропасти есть имя}
+  \vspace{0.2cm}
+
+  \begin{center}
+  {\Huge \textbf{Intent Debt}}
+  \end{center}
+
+  \vspace{0.3cm}
+
+  Термин предложила Маргарет-Энн Стори: рядом с техническим и когнитивным долгом
+  она ставит третий\footnote{M.-A.\ Storey. \textit{From Technical Debt to Cognitive
+  and Intent Debt: Rethinking Software Health in the Age of AI.} ACM Queue, 2026.
+  \href{https://doi.org/10.1145/3807966}{\texttt{doi.org/10.1145/3807966}}
+  (препринт: \href{https://arxiv.org/abs/2603.22106}{\texttt{arXiv:2603.22106}}).} ---
+
+  \vspace{0.3cm}
+
+  \begin{center}
+  \begin{minipage}{0.85\textwidth}
+  \small
+  \textit{<<the absence or erosion of explicit rationale, goals,
+  and constraints that guide how a system evolves>>}
+  \end{minipage}
+  \end{center}
+
+  \vspace{0.35cm}
+
+  \begin{center}
+  \footnotesize\textcolor{mutedText}{%
+    Технический долг --- это про то, \emph{как} написан код.\\
+    Intent debt --- про то, \emph{зачем} он вообще написан.
+  }
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 5
+\begin{frame}{Потерянный код}
+  \vspace{0.1cm}
+
+  Ещё в 1985 году Питер Наур писал\footnote{P.\ Naur. \textit{Programming as Theory
+  Building.} 1985.
+  \href{https://pages.cs.wisc.edu/~remzi/Naur.pdf}{\texttt{pages.cs.wisc.edu/\textasciitilde remzi/Naur.pdf}}}:
+  программирование --- это построение \emph{теории} того,
+  как задача решается программой.
+
+  \vspace{0.3cm}
+
+  \begin{itemize}
+    \setlength\itemsep{0.35em}
+    \item Живая система --- это теория в головах команды. Код --- только её проекция.
+    \item Когда команда уходит, теория умирает вместе с ней. Код остаётся.
+    \item Такой код компилируется, тесты зелёные --- и всё равно он \textbf{потерян}:
+          никто не знает, какую задачу он решает и почему именно так.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 6
+\begin{frame}{Layered Decision Records}
+  \vspace{0.1cm}
+
+  LDR собирается из трёх давно известных практик\footnote{T.\ Torres ---
+  \href{https://www.producttalk.org/}{\texttt{producttalk.org}}; \ M.\ Nygard, 2011 ---
+  \href{https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions}{\texttt{cognitect.com}}.}:
+
+  \vspace{0.1cm}
+
+  \begin{columns}[t, onlytextwidth]
+    \column{0.31\textwidth}
+      \textbf{\small Continuous Discovery}\\
+      \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[4pt]
+      \footnotesize Teresa Torres.\\[4pt]
+      Сначала фактами доказываем, что проблема есть, ---
+      и только потом проектируем решение.
+
+    \column{0.31\textwidth}
+      \textbf{\small Hypothesis-Driven}\\
+      \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[4pt]
+      \footnotesize Идея входит в работу как \emph{опровержимая} гипотеза,
+      а не как требование.
+
+    \column{0.31\textwidth}
+      \textbf{\small ADR}\\
+      \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[4pt]
+      \footnotesize Michael Nygard, 2011.\\[4pt]
+      Принятое --- заморожено. Передумали --- пишем новое взамен,
+      старое не правим.
+  \end{columns}
+
+  \vspace{0.25cm}
+  \begin{center}
+  \begin{minipage}{0.9\textwidth}
+  \small
+  Своё в LDR одно: \textbf{контекст течёт строго в одну сторону} ---
+  каждый уровень добавляет только то, чего нет уровнем выше.
+  Ни дублей, ни циклов.
+  \end{minipage}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 7
+\begin{frame}{Цикл артефактов}
+  \begin{center}
+  \begin{tikzpicture}
+    % Single-line nodes: readable from the back row, and they leave room for
+    % honest spacing between levels instead of boxes touching.
+    \node[artifact accepted, minimum width=6.2cm] (prob) at (0, 2.6)
+      {\artid{PROB-0001} \, thin-file applicants mispriced};
+
+    \node[artifact accepted, minimum width=6.2cm] (met) at (0, 1.5)
+      {\artid{MET-0001} \, precision @ thin-file};
+
+    \node[artifact accepted, minimum width=3.9cm] (sol) at (-2.0, 0.4)
+      {\artid{SOL-0001} \, velocity};
+    \node[artifact rejected, minimum width=3.9cm] (sol2) at (2.4, 0.4)
+      {\artid{SOL-0002} \, bureau};
+
+    \node[artifact accepted, minimum width=3.9cm] (feat) at (-2.0, -0.7)
+      {\artid{FEAT-0001} \, velocity v1};
+
+    \node[artifact task, minimum width=2.0cm] (task) at (-4.3, -1.9) {\artid{TASK-0001}};
+    \node[artifact task, minimum width=2.0cm] (qa)   at (-2.0, -1.9) {\artid{QA-0001}};
+    \node[artifact task, minimum width=2.0cm] (rel)  at (0.3, -1.9) {\artid{REL-0001}};
+
+    \draw[fk arrow] (met.north)  -- (prob.south);
+    \draw[fk arrow] (sol.north)  -- ([xshift=-2cm]met.south);
+    \draw[fk arrow] (sol2.north) -- ([xshift=2cm]met.south);
+    \draw[fk arrow] (feat.north) -- (sol.south);
+    \draw[fk arrow] (task.north) -- ([xshift=-1.2cm]feat.south);
+    \draw[fk arrow] (qa.north)   -- (feat.south);
+    \draw[fk arrow] (rel.north)  -- ([xshift=1.2cm]feat.south);
+  \end{tikzpicture}
+  \end{center}
+
+  \begin{center}
+  \footnotesize\textcolor{mutedText}{%
+    Каждая стрелка --- внешний ключ, и идёт она \emph{от} того артефакта,
+    который хранит ссылку. Корень дерева --- проблема, а не метрика.}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 8
+\begin{frame}{Альтернативы не исчезают}
+  \begin{center}
+  \begin{tikzpicture}
+    \node[artifact accepted, minimum width=9.5cm, minimum height=0.8cm] (hyp) at (0, 2.2)
+      {\artid{PROB-0001}: thin-file applicants mispriced};
+
+    \node[artifact accepted, minimum width=9cm, minimum height=0.7cm,
+          align=left, anchor=west] (s1) at (-3.5, 1.0) {%
+      \quad\artid{SOL-0001} transaction velocity \hfill \textbf{ACCEPTED}\quad
+    };
+    \node[artifact rejected, minimum width=9cm, minimum height=1.1cm,
+          align=left, anchor=west] (s2) at (-3.5, -0.3) {%
+      \quad\artid{SOL-0002} third-party bureau enrichment \hfill REJECTED\quad\\
+      \quad\footnotesize\textit{rationale: fails GDPR review for prospect data}
+    };
+    \node[artifact rejected, minimum width=9cm, minimum height=1.1cm,
+          align=left, anchor=west] (s3) at (-3.5, -1.7) {%
+      \quad\artid{SOL-0003} graph-based network features \hfill REJECTED\quad\\
+      \quad\footnotesize\textit{rationale: needs 6-month historical reload}
+    };
+
+    \draw[line width=0.7pt, black!50] (hyp.south) -- (-4, 1.8) -- (-4, -1.7);
+    \draw[fk arrow] (-4, 1.0)  -- (s1.west);
+    \draw[fk arrow] (-4, -0.3) -- (s2.west);
+    \draw[fk arrow] (-4, -1.7) -- (s3.west);
+  \end{tikzpicture}
+  \end{center}
+
+  \begin{center}
+  \textcolor{mutedText}{\small Пройдёт два года, придёт новый человек и спросит:
+  \textit{<<а почему тогда не взяли bureau enrichment?>>} Ответ уже лежит в
+  репозитории --- вместе с причиной.}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 9
+\begin{frame}{pet}
+  \vspace{0.4cm}
+  \begin{itemize}
+    \setlength\itemsep{0.45em}
+    \item \textbf{pet} --- мой инструмент для проверки этой гипотезы.
+          Он сырой, и я его первый --- и пока единственный --- пользователь.
+    \item Все артефакты --- обычный markdown в том же git-репозитории, что и код.
+          Целостность ссылок между ними проверяет CI.
+    \item Сам инструмент написан на TypeScript, а репозиторий в демо --- на \textbf{Python}.
+          Это не имеет значения: артефакты лежат в \texttt{doc/},
+          и язык проекта роли не играет.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 10
+\begin{frame}{Демо: проблема и метрика}
+  \shot{01-discovery-start}
+\end{frame}
+
+% ---------------------------------------------------------------- 11
+\begin{frame}{Демо: агент заполняет Evidence}
+  \shot{02-researcher}
+\end{frame}
+
+% ---------------------------------------------------------------- 12
+\begin{frame}{Демо: решает человек, а не агент}
+  \shot{04-reject-alternative}
+\end{frame}
+
+% ---------------------------------------------------------------- 13
+\begin{frame}{Демо: отвергнутая альтернатива остаётся}
+  \shot{05-alternatives-preserved}
+\end{frame}
+
+% ---------------------------------------------------------------- 14
+\begin{frame}{Демо: что легло в git}
+  \shot{06-pipeline}
+\end{frame}
+
+% ---------------------------------------------------------------- 15
+\begin{frame}{Демо: принятое не переписывается}
+  \shot{08-immutability}
+\end{frame}
+
+% ---------------------------------------------------------------- 16
+\begin{frame}{Чем это отличается от ADR и spec-driven}
+  \vspace{0.25cm}
+  \begin{columns}[t, onlytextwidth]
+
+    \column{0.47\textwidth}
+      \textbf{\small ADR}\\
+      \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[5pt]
+      \footnotesize Решает ровно половину задачи: фиксирует \emph{архитектурные}
+      решения --- и делает это хорошо.\\[5pt]
+      Но у него нет связи с продуктовым <<зачем>>: ни метрики, ни гипотезы,
+      ни уровня выше.
+
+    \column{0.47\textwidth}
+      \textbf{\small Spec-driven: Kiro, Spec Kit}\\
+      \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[5pt]
+      \footnotesize Спека \emph{запускает} работу --- и на этом её жизнь
+      заканчивается: дальше она протухает, и источником правды снова
+      становится код.\\[5pt]
+      Долгоживущие спеки сегодня пробует только Tessl.
+
+  \end{columns}
+
+  \vspace{0.4cm}
+  \small Мейнстримный spec-driven development копит ровно тот долг, о котором
+  этот доклад: спецификация там --- одноразовый запуск, а не запись
+  решения\footnote{Разбор трёх SDD-инструментов: B.\ Böckeler.
+  \textit{Understanding Spec-Driven-Development: Kiro, spec-kit, and Tessl.}
+  martinfowler.com, 2025.
+  \href{https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html}{\texttt{martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html}}}.
+\end{frame}
+
+% ---------------------------------------------------------------- 17
+\begin{frame}{Возражения}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \setlength\itemsep{0.5em}
+    \small
+    \item \textbf{<<Это просто провал инженерной дисциплины>>}\\
+          \footnotesize Возможно. Но дисциплина не масштабируется и не переживает
+          смену команды. Нужен механизм, который работает без героев, ---
+          а не благие намерения.
+
+    \item \textbf{<<AI сам восстановит rationale по коду>>}\\
+          \footnotesize Восстановит --- но только \emph{что} сделано, не \emph{почему}.
+          А отвергнутой альтернативы в коде нет вообще: её невозможно вывести
+          из того, что осталось.
+
+    \item \textbf{<<Resist the automation of understanding>>}\footnote{М.-Э.\ Стори
+          об этом же: \textit{What I'm Hearing About Cognitive Debt (So Far)},
+          2026. \href{https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/}{\texttt{margaretstorey.com}}}\\
+          \footnotesize Это возражение Стори бьёт прямо по pet: артефакты пишет агент.
+          Мой ответ --- человек жмёт \texttt{accept} на каждом шаге. Агент готовит,
+          решает человек; без этого запись превращается в ритуал.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 18
+\begin{frame}{Честная граница}
+  \vspace{0.3cm}
+  \begin{itemize}
+    \setlength\itemsep{0.45em}
+    \item \textbf{Discovery действительно догфудится:} проблема, метрики,
+          решения и фичи этого репозитория заведены через сам инструмент.
+    \item \textbf{Delivery --- пока нет:} задачи, QA-планы и релизы
+          построены мимо пайплайна.
+    \item Это проверяется одной командой \texttt{ls} --- поэтому я говорю
+          об этом сам, не дожидаясь вопроса из зала.
+  \end{itemize}
+
+  \vspace{0.5cm}
+  \begin{center}
+  \begin{minipage}{0.9\textwidth}
+  \footnotesize\textcolor{mutedText}{%
+  Инструмент против intent debt обязан выдерживать собственную проверку.
+  Там, где он её пока не выдерживает, честнее сказать это со сцены раньше,
+  чем спросят из зала.}
+  \end{minipage}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 19
+\begin{frame}{Что померить и что попробовать}
+  \vspace{0.25cm}
+
+  \textbf{\small Метрики intent debt в вашей команде}\\[-6pt]
+  \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[3pt]
+  \begin{itemize}
+    \setlength\itemsep{0.15em}
+    \footnotesize
+    \item У какой доли решений записана причина --- а не только результат?
+    \item Сколько времени занимает ответ на вопрос <<почему так, а не иначе?>>
+    \item Сколько отвергнутых альтернатив за прошлый квартал вы можете вспомнить?
+  \end{itemize}
+
+  \vspace{0.4cm}
+  \textbf{\small Что попробовать уже завтра}\\[-6pt]
+  \textcolor{mutedText}{\rule{\linewidth}{0.4pt}}\\[3pt]
+  \begin{itemize}
+    \setlength\itemsep{0.15em}
+    \footnotesize
+    \item Написать один ADR на ближайшее архитектурное решение. Один файл, пять минут.
+    \item Записать не только выбранный вариант, но и отвергнутый --- вместе с причиной.
+    \item Проверка простая: сможет ли новый человек ответить <<почему не X?>>,
+          не приходя к вам.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 20
+\begin{frame}{Потрогать руками}
+  \begin{center}
+    {\hypersetup{urlcolor=black}%
+     \qrcode[height=3.7cm]{https://github.com/smirnoffmg/pet-example}}\\[0.4cm]
+    \href{https://github.com/smirnoffmg/pet-example}{\texttt{github.com/smirnoffmg/pet-example}}\\[0.15cm]
+    {\small\textcolor{mutedText}{демо-репозиторий доклада: Python-сервис и весь пайплайн
+    артефактов в \texttt{doc/}}}\\[0.45cm]
+    {\small инструмент: \href{https://github.com/smirnoffmg/pet}{\texttt{github.com/smirnoffmg/pet}}}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- 21
+\begin{frame}{Источники}
+  \scriptsize
+  \begin{itemize}
+    \setlength\itemsep{0.2em}
+
+    \item M.-A.\ Storey. \textit{From Technical Debt to Cognitive and Intent
+          Debt: Rethinking Software Health in the Age of AI.}
+          ACM Queue, 2026.
+          \href{https://doi.org/10.1145/3807966}{\texttt{doi.org/10.1145/3807966}}
+          \textcolor{mutedText}{(препринт:
+          \href{https://arxiv.org/abs/2603.22106}{\texttt{arXiv:2603.22106}})}
+
+    \item M.-A.\ Storey. \textit{What I'm Hearing About Cognitive Debt (So Far).}
+          2026.
+          \href{https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/}{\texttt{margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited}}
+
+    \item P.\ Naur. \textit{Programming as Theory Building.}
+          Microprocessing and Microprogramming, 1985.
+          \href{https://pages.cs.wisc.edu/~remzi/Naur.pdf}{\texttt{pages.cs.wisc.edu/\textasciitilde remzi/Naur.pdf}}
+
+    \item M.\ Nygard. \textit{Documenting Architecture Decisions.} 2011.
+          \href{https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions}{\texttt{cognitect.com/blog/2011/11/15/documenting-architecture-decisions}}
+
+    \item T.\ Torres. \textit{Continuous Discovery Habits.} 2021.
+          \href{https://www.producttalk.org/}{\texttt{producttalk.org}}
+
+    \item H.\ Cummins. \textit{Intent Debt in Software Development}
+          \textcolor{mutedText}{(пост в LinkedIn, 2026)}. Её кейноут на QCon London 2026:
+          \textit{The Free-Lunch Guide to Idea Circularity} ---
+          \href{https://speakerdeck.com/hollycummins/the-free-lunch-guide-to-idea-circularity}{\texttt{speakerdeck.com/hollycummins}}
+
+    \item A.\ Osmani. \textit{The Intent Debt.}
+          \href{https://addyosmani.com/blog/intent-debt/}{\texttt{addyosmani.com/blog/intent-debt}}
+
+    \item B.\ Böckeler. \textit{Understanding Spec-Driven-Development: Kiro,
+          spec-kit, and Tessl.} martinfowler.com, 2025.
+          \href{https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html}{\texttt{martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html}}
+
+    \item \textit{Faster Code, Deeper Debt? A Multivocal Literature Review on
+          Technical Debt in LLM-Assisted Software Development.}
+          \href{https://arxiv.org/abs/2606.14796}{\texttt{arXiv:2606.14796}}
+
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- 22
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge\textbf{Спасибо!}}\\[0.7cm]
+    {\large Максим Смирнов}\\[0.5cm]
+    {\hypersetup{urlcolor=black}%
+     \qrcode[height=3.2cm]{https://smirnoffmg.dev}}\\[0.35cm]
+    \href{https://smirnoffmg.dev}{\texttt{\large smirnoffmg.dev}}
+  \end{center}
+  \vfill
+\end{frame}
+
+\end{document}

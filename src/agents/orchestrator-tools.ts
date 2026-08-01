@@ -28,11 +28,11 @@ import {
 } from "@/store/index.js";
 import { problemHypothesisIdSchema, metricIdSchema } from "@/schemas/ids.js";
 import type { HypothesisFrontmatter, TargetMetricFrontmatter } from "@/schemas/index.js";
-import type { PdtLogger } from "@/log.js";
+import type { PetLogger } from "@/log.js";
 
 export function createOrchestratorTools(
   docRoot: string,
-  logger: PdtLogger,
+  logger: PetLogger,
 ): StructuredToolInterface[] {
   const orchestrateStep = tool(
     async () => {

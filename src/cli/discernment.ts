@@ -39,13 +39,32 @@ const CHECKLISTS: Record<string, string[]> = {
   ],
 };
 
-export function printDiscernmentChecklist(kind: string, id: string): void {
-  const items = CHECKLISTS[kind];
-  if (!items || items.length === 0) return;
+const REJECTION_CHECKLISTS: Record<string, string[]> = {
+  solution_hypothesis: [
+    "This alternative was genuinely considered, not invented to look considered",
+    "The rationale names a concrete blocker — cost, risk, compliance, timing",
+    "The rationale will still be legible to someone who joins in two years",
+    "It is rejected, not merely deferred (a deferred option stays proposed)",
+    "Once committed, this is frozen — the rationale cannot be reworded later",
+  ],
+};
 
-  process.stdout.write(`\nDiscernment checklist — ${id} (${kind.replace("_", "-")})\n`);
+function printChecklist(items: string[], heading: string): void {
+  process.stdout.write(`\n${heading}\n`);
   for (const item of items) {
     process.stdout.write(`  ▸ ${item}\n`);
   }
   process.stdout.write("Review each item before confirming.\n\n");
+}
+
+export function printDiscernmentChecklist(kind: string, id: string): void {
+  const items = CHECKLISTS[kind];
+  if (!items || items.length === 0) return;
+  printChecklist(items, `Discernment checklist — ${id} (${kind.replace("_", "-")})`);
+}
+
+export function printRejectionChecklist(kind: string, id: string): void {
+  const items = REJECTION_CHECKLISTS[kind];
+  if (!items || items.length === 0) return;
+  printChecklist(items, `Rejection checklist — ${id} (${kind.replace("_", "-")})`);
 }

@@ -1,0 +1,9 @@
+product/00-problem-hypotheses/0001-users-abandon-checkout-at-the-shipping-step.md
+product/01-metrics/0001-checkout-completion-rate.md
+product/02-solution-hypotheses/0001-solution-for-users-abandon-checkout-at-the-shipping-step.md
+product/02-solution-hypotheses/0002-third-party-address-autofill.md
+product/03-features/0001-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+product/04-tasks/archive/0001-implement-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+product/05-qa-plans/0001-qa-plan-for-feature-for-solution-for-users-abandon-checkout-at-the-shipping-step.md
+product/06-releases/0001-v0-1-0.md
+product/orchestration/decisions.md

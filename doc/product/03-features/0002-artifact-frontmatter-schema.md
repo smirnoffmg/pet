@@ -42,7 +42,11 @@ cross-reference fields are required vs. optional.
 | Solution hypothesis | `id` (SOL-NNNN), `status`, `metric_ids[]`                                           | `proposed`, `accepted`, `rejected`, `superseded`                 |
 | Feature             | `id` (FEAT-NNNN), `status`, `solution_hypothesis_id`, `architectural_review_status` | `proposed`, `accepted`, `released`, `superseded`                 |
 | Task                | `id` (TASK-NNNN), `status`, `feature_id`                                            | `todo`, `in_progress`, `review`, `done`                          |
-| ADR                 | `id` (ADR-NNNN), `status`                                                           | `proposed`, `accepted`, `superseded`, `deprecated`               |
+| ADR                 | _(no frontmatter — see below)_                                                      | `Proposed`, `Accepted`, `Superseded`, `Deprecated`               |
+
+ADRs are deliberately outside this schema. They are plain Nygard-format markdown with no
+YAML frontmatter; the status is a bare word in the `## Status` section, and `doc/adr/` is
+excluded from artifact scanning, so `pet validate` does not check ADRs.
 
 Filename convention: `NNNN-<kebab-case-title>.md` where `NNNN` is the same numeric
 suffix as the `id` field. Mismatch between filename number and `id` number is a

@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { randomBytes } from "node:crypto";
 import matter from "gray-matter";
 
 const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
@@ -22,12 +21,7 @@ interface Fixture {
 function writeArtifact(fixture: Fixture, relPath: string, content: string): string {
   const full = path.join(fixture.doc, relPath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
-  // Append a per-fixture nonce so gray-matter's content-keyed parse cache
-  // does not collide across tests (the production code mutates the cached
-  // data object when promoting status, which would otherwise leak into the
-  // next test's parse result).
-  const nonce = `<!-- nonce: ${randomBytes(8).toString("hex")} -->\n`;
-  fs.writeFileSync(full, content + nonce, "utf8");
+  fs.writeFileSync(full, content, "utf8");
   return full;
 }
 

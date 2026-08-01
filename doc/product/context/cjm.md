@@ -61,11 +61,14 @@ project), or the user is ready to create the first metric (new project).
 Anchors work to a measurable outcome, then a falsifiable problem, then an
 evidenced solution, then a scoped feature. Each promotion is a human gate.
 
+The problem hypothesis comes first. `MET-` carries `problem_hypothesis_id`, so
+`pet new metric` refuses to run until a `PROB-` exists to hang the metric on.
+
 ```bash
-pet new metric "..."                          # -> MET-NNNN
+pet new hypothesis "..."                      # -> PROB-NNNN (the FK root)
+pet new metric --hypothesis PROB-NNNN "..."   # -> MET-NNNN
 pet accept metric MET-NNNN                    # gate
 
-pet new hypothesis --metric MET-NNNN "..."    # -> PROB-NNNN
 pet discover --hypothesis PROB-NNNN --yes     # Researcher fills Evidence
 pet accept hypothesis PROB-NNNN               # gate
 
@@ -85,10 +88,15 @@ Exit condition: at least one `FEAT-` is `accepted`.
 
 ### 3. Delivery cycle
 
+`pet deliver` is a reconciler and advances one step per invocation: the first
+run clears architectural review, and only the second decomposes into tasks.
+
 ```bash
 pet deliver --feature FEAT-NNNN --yes
-# Architect reviews architecture, writes ADR(s) if warranted
-# TechLead decomposes the feature into TASK-NNNN files
+# 1st run: Architect reviews architecture, writes ADR(s) if warranted,
+#          and sets architectural_review_status: cleared
+pet deliver --feature FEAT-NNNN --yes
+# 2nd run: TechLead decomposes the feature into TASK-NNNN files
 
 pet list tasks
 pet develop --task TASK-NNNN --yes            # Dev enriches task body with an implementation approach

@@ -1,7 +1,7 @@
 {
   "name": "@smirnoffmg/pet",
   "version": "0.1.0",
-  "description": "Product Engineer Toolkit - agentic product development over markdown artifacts",
+  "description": "Product Engineering Toolkit - agentic product development over markdown artifacts",
   "type": "module",
   "license": "MIT",
   "author": "Maksim Smirnov <smirnoffmg@gmail.com>",
@@ -28,12 +28,16 @@
     "pet": "node dist/pet.js",
     "validate": "tsx scripts/validate.ts",
     "test": "vitest run",
-    "test:ollama": "PET_LLM_PROVIDER=ollama PET_LLM_MODEL=qwen3:8b vitest run tests/e2e",
+    "test:e2e": "npm run build && FORCE_COLOR=3 vitest run tests/e2e-cli",
+    "test:ollama": "PET_LLM_PROVIDER=ollama PET_LLM_MODEL=${PET_LLM_MODEL:-gemma3:27b} vitest run tests/e2e/",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "screenshots": "npm run build && tsx scripts/screenshots.ts",
+    "screenshots:live": "npm run build && tsx scripts/screenshots.ts --live",
+    "screenshots:ollama": "npm run build && tsx scripts/screenshots.ts --ollama"
   },
   "engines": {
     "node": ">=22"
@@ -67,6 +71,7 @@
     "eslint": "^9.22.0",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
     "prettier": "^3.5.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",

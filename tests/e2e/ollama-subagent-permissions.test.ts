@@ -1,20 +1,20 @@
 /**
  * E2E: Ollama subagent permission-boundary regression tests.
  *
- * Run with a verified capable model (see ADR-0014 / ADR-0015):
+ * Run with a model verified to chain tool calls (see ADR-0014 / ADR-0015):
  *   PET_LLM_PROVIDER=ollama PET_LLM_MODEL=<model> npx vitest run tests/e2e
- *   npm run test:ollama   (uses qwen2.5:7b by default, change to suit your setup)
+ *   npm run test:ollama   (override with PET_LLM_MODEL=<model>)
  *
  * The suite is SKIPPED automatically when PET_LLM_PROVIDER is not "ollama" or
  * PET_LLM_MODEL is unset, so it is invisible to normal CI (PET_MOCK_AGENTS=1).
  *
- * Two assertions per test:
- *   1. Permission boundary — runLiveAgent must not throw AND no files outside
- *      the role's allowed directory may be created or modified.  This assertion
- *      is meaningful regardless of model quality.
- *   2. Model capability — the designated output section must be non-trivially
- *      populated.  This assertion fails for models that do not reliably execute
- *      tool calls (see ADR-0015 for the verification protocol).
+ * Two assertions per test, split by what they prove (ADR-0018):
+ *   1. Permission boundary — HARD. runLiveAgent must not throw AND no file
+ *      outside the role's allowed directory may be created or modified. This is
+ *      meaningful regardless of model quality, so a violation always fails.
+ *   2. Model capability — SOFT. The designated output section must be
+ *      non-trivially populated. A weak model fails this without implying any
+ *      defect in the permission system, so it is recorded, not fatal.
  */
 
 import fs from "node:fs";
@@ -25,6 +25,7 @@ import { problemHypothesisIdSchema } from "@/schemas/ids.js";
 import { runLiveAgent } from "@/agents/run-agent.js";
 import { createResearcherFixture } from "../helpers/researcher-fixture.js";
 import { snapshotFixture } from "../helpers/fixture-diff.js";
+import { runAgentCapturingDenials } from "../helpers/agent-error.js";
 
 const PROVIDER = process.env["PET_LLM_PROVIDER"] ?? "";
 const MODEL = process.env["PET_LLM_MODEL"] ?? "";
@@ -62,50 +63,68 @@ describe.skipIf(PROVIDER !== "ollama" || !MODEL)(
         // so that permission paths like /product/00-problem-hypotheses/** resolve correctly.
         const testDocRoot = path.resolve(ctx.root, "..");
         try {
-          const hypPath = path.join(ctx.root, "hypotheses", "0001-hyp-proposed.md");
+          const hypPath = path.join(ctx.root, "00-problem-hypotheses", "0001-hyp-proposed.md");
           const hypBody = fs.readFileSync(hypPath, "utf8");
           // Snapshot the product/ subtree — that's all agents are allowed to touch.
           const before = snapshotFixture(ctx.root);
 
-          // Assertion 1 — permission boundary: must not throw.
-          // Permission errors from deepagents FilesystemBackend surface as rejected promises.
-          await runLiveAgent(
-            "researcher",
-            testDocRoot,
-            {
-              hypothesisId: problemHypothesisIdSchema.parse("PROB-0001"),
-              hypothesisTitle: "Hypothesis: users need faster onboarding",
-              hypothesisBody: hypBody,
-            },
-            createLogger({ verbose: false }),
+          // A refused write is the boundary working, so it is separated from a
+          // genuine crash rather than counted as a boundary violation.
+          const outcome = await runAgentCapturingDenials(() =>
+            runLiveAgent(
+              "researcher",
+              testDocRoot,
+              {
+                hypothesisId: problemHypothesisIdSchema.parse("PROB-0001"),
+                hypothesisTitle: "Hypothesis: users need faster onboarding",
+                hypothesisBody: hypBody,
+              },
+              createLogger({ verbose: false }),
+            ),
           );
+
+          // HARD — anything other than a permission denial is a real defect.
+          if (outcome.fatal !== null) throw outcome.fatal;
 
           const after = snapshotFixture(ctx.root);
 
-          // Assertion 1a — no existing file outside hypotheses/ may be modified.
-          // features/, tasks/, metrics/ all have sentinel stubs; any write there is a side-effect.
+          // Assertion 1a (HARD) — no existing file outside 00-problem-hypotheses/
+          // may be modified. 03-features/, 04-tasks/ and 01-metrics/ hold sentinel
+          // stubs, so any write there is a side-effect.
           for (const [rel, content] of before) {
-            if (rel.startsWith("hypotheses/")) continue;
+            if (rel.startsWith("00-problem-hypotheses/")) continue;
             if (rel.startsWith("orchestration/")) continue; // append-only log is OK
             expect(after.get(rel), `side-effect: ${rel} must not be modified`).toBe(content);
           }
 
-          // Assertion 1b — no new files may appear outside hypotheses/.
+          // Assertion 1b (HARD) — no new file may appear outside that directory.
           for (const rel of after.keys()) {
             if (before.has(rel)) continue;
-            expect(rel, `unexpected new file outside hypotheses/: ${rel}`).toMatch(/^hypotheses\//);
+            expect(rel, `unexpected new file outside 00-problem-hypotheses/: ${rel}`).toMatch(
+              /^00-problem-hypotheses\//,
+            );
           }
 
-          // Assertion 2 — model capability: Evidence body must be non-trivially populated.
-          // This fails for models that do not reliably execute tool calls.
-          // If this assertion fails but 1a/1b pass, the permission system is healthy
-          // but the model needs to be upgraded (see ADR-0015 verification protocol).
-          const updated = after.get("hypotheses/0001-hyp-proposed.md") ?? "";
+          // SOFT — the model was refused (forbidden path, or malformed tool call).
+          // The refusal proves the system works; the reaching proves the model is weak.
+          expect
+            .soft(
+              outcome.faults,
+              `system refused invalid model behaviour (code is fine): ${outcome.faults.join(", ")}`,
+            )
+            .toEqual([]);
+
+          // Assertion 2 (SOFT) — model capability. A model that cannot chain tool
+          // calls leaves Evidence empty; that says nothing about the permission
+          // system, so it is recorded rather than fatal (ADR-0018).
+          const updated = after.get("00-problem-hypotheses/0001-hyp-proposed.md") ?? "";
           const evidenceBody = updated.split("## Evidence")[1]?.trim() ?? "";
-          expect(
-            evidenceBody.length,
-            "## Evidence must be populated — model did not execute tool calls (see ADR-0015)",
-          ).toBeGreaterThan(10);
+          expect
+            .soft(
+              evidenceBody.length,
+              "## Evidence must be populated — model did not execute tool calls (see ADR-0015)",
+            )
+            .toBeGreaterThan(10);
         } finally {
           ctx.cleanup();
         }

@@ -21,7 +21,7 @@ function orchestrationBulletCount(orchPath: string): number {
   return n;
 }
 
-function runPdt(cwd: string, args: string[]): { status: number | null; combined: string } {
+function runPet(cwd: string, args: string[]): { status: number | null; combined: string } {
   const r = spawnSync(process.execPath, [petJs, ...args], {
     cwd,
     encoding: "utf8",
@@ -61,20 +61,20 @@ describe("FEAT-0021 mock deliver (isolated fixture)", () => {
       const orch = path.join(ctx.productRoot, "orchestration/decisions.md");
       const beforeOrch = orchestrationBulletCount(orch);
 
-      const dry1 = runPdt(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--dry-run"]);
+      const dry1 = runPet(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--dry-run"]);
       expect(dry1.status).toBe(0);
       expect(dry1.combined).toContain("spawn TechLead for FEAT-0021");
       expect(dry1.combined).toContain("(dry-run: no agents executed)");
       expect(dry1.combined).not.toContain("spawn Architect for FEAT-0021");
       expect(orchestrationBulletCount(orch)).toBe(beforeOrch);
 
-      const deliver = runPdt(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--yes"]);
+      const deliver = runPet(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--yes"]);
       expect(deliver.status, deliver.combined).toBe(0);
 
       const afterOrch = orchestrationBulletCount(orch);
       expect(afterOrch).toBe(beforeOrch + 1);
 
-      const validate = runPdt(ctx.repoRoot, ["validate"]);
+      const validate = runPet(ctx.repoRoot, ["validate"]);
       expect(validate.status, validate.combined).toBe(0);
 
       const tasksDir = path.join(ctx.productRoot, "04-tasks");
@@ -85,7 +85,7 @@ describe("FEAT-0021 mock deliver (isolated fixture)", () => {
       });
       expect(forFeat21.length).toBeGreaterThan(0);
 
-      const dry2 = runPdt(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--dry-run"]);
+      const dry2 = runPet(ctx.repoRoot, ["deliver", "--feature", "FEAT-0021", "--dry-run"]);
       expect(dry2.status).toBe(0);
       expect(dry2.combined).toContain("already has open task");
       expect(dry2.combined).not.toContain("spawn TechLead for FEAT-0021");

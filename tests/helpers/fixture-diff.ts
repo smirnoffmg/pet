@@ -7,7 +7,7 @@ export type FixtureSnapshot = Map<string, string>;
 export interface AssertFixtureDiffOptions {
   snapshot: FixtureSnapshot;
   root: string;
-  /** Relative path, e.g. "hypotheses/0001-hyp-proposed.md". */
+  /** Relative path, e.g. "00-problem-hypotheses/0001-hyp-proposed.md". */
   targetHypothesisPath: string;
   expectEvidenceChanged: boolean;
   /**

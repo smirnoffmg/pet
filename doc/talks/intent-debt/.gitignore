@@ -1,0 +1,12 @@
+*.pdf
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+
+# Build artifacts: screenshots are committed as SVG in doc/screenshots/
+# and converted to PDF at build time.
+img/shots/

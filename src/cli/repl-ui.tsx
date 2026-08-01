@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdin } from "ink";
 import { scanArtifacts } from "@/store/scan.js";
 import { computeActions } from "@/cli/next-cmd.js";
 import type { Action } from "@/cli/next-cmd.js";
@@ -48,6 +48,8 @@ export function ReplUI({ docRoot, onExit }: ReplUIProps) {
     setPhase(pending.length === 0 ? "idle" : "confirming");
   }, [phase, docRoot, skipped, onExit]);
 
+  const { isRawModeSupported } = useStdin();
+
   // Live elapsed timer while running
   useEffect(() => {
     if (phase !== "running") return;
@@ -55,48 +57,51 @@ export function ReplUI({ docRoot, onExit }: ReplUIProps) {
     return () => clearInterval(id);
   }, [phase]);
 
-  useInput((input, key) => {
-    if (phase === "confirming") {
-      const action = actions[0];
-      if (!action) return;
-      if (input === "y" || key.return) {
-        void (async () => {
-          setElapsed(0);
-          setPhase("running");
-          resetLastRunUsage();
-          const started = Date.now();
-          const code = await dispatchReplCommand(action.command);
-          const durationSec = Math.round((Date.now() - started) / 1000);
-          const usage = getLastRunUsage();
-          setLastRun(usage ? { ...usage, durationSec } : null);
-          if (code !== 0) {
-            process.stderr.write(`Command exited with code ${code}.\n`);
-          }
-          skipped.delete(action.command);
+  useInput(
+    (input, key) => {
+      if (phase === "confirming") {
+        const action = actions[0];
+        if (!action) return;
+        if (input === "y" || key.return) {
+          void (async () => {
+            setElapsed(0);
+            setPhase("running");
+            resetLastRunUsage();
+            const started = Date.now();
+            const code = await dispatchReplCommand(action.command);
+            const durationSec = Math.round((Date.now() - started) / 1000);
+            const usage = getLastRunUsage();
+            setLastRun(usage ? { ...usage, durationSec } : null);
+            if (code !== 0) {
+              process.stderr.write(`Command exited with code ${code}.\n`);
+            }
+            skipped.delete(action.command);
+            setPhase("loading");
+          })();
+          return;
+        }
+        if (input === "s") {
+          skipped.add(action.command);
           setPhase("loading");
-        })();
+          return;
+        }
+      }
+      if (phase === "idle") {
+        if (input === "q" || (key.ctrl && input === "c")) {
+          setPhase("done");
+          onExit(0);
+        }
         return;
       }
-      if (input === "s") {
-        skipped.add(action.command);
-        setPhase("loading");
-        return;
+      if (phase === "confirming" || phase === "running") {
+        if (input === "q" || (key.ctrl && input === "c")) {
+          setPhase("done");
+          onExit(0);
+        }
       }
-    }
-    if (phase === "idle") {
-      if (input === "q" || (key.ctrl && input === "c")) {
-        setPhase("done");
-        onExit(0);
-      }
-      return;
-    }
-    if (phase === "confirming" || phase === "running") {
-      if (input === "q" || (key.ctrl && input === "c")) {
-        setPhase("done");
-        onExit(0);
-      }
-    }
-  });
+    },
+    { isActive: isRawModeSupported === true },
+  );
 
   const currentAction = actions[0] ?? null;
   const sessionUsage = getSessionUsage();
