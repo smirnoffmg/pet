@@ -4,11 +4,11 @@ Synthesizing project context with LLM...
 LLM call failed: ANTHROPIC_API_KEY is required when PET_LLM_PROVIDER=anthropic
 
 $ pet new hypothesis Users abandon checkout at the shipping step
-Created /private<REPO>/doc/product/00-problem-hypotheses/0001-users-abandon-checkout-at-the-shipping-step.md
+Created <REPO>/doc/product/00-problem-hypotheses/0001-users-abandon-checkout-at-the-shipping-step.md
 Run `pet validate` to check the repository.
 
 $ pet new metric --hypothesis PROB-0001 Checkout completion rate
-Created /private<REPO>/doc/product/01-metrics/0001-checkout-completion-rate.md
+Created <REPO>/doc/product/01-metrics/0001-checkout-completion-rate.md
 Run `pet validate` to check the repository.
 
 $ pet discover --hypothesis PROB-0001 --yes
@@ -52,7 +52,7 @@ Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
 Warning: no git history found — immutability checks skipped
 
 $ pet new solution-hypothesis --metric MET-0001 Third-party address autofill
-Created /private<REPO>/doc/product/02-solution-hypotheses/0002-third-party-address-autofill.md
+Created <REPO>/doc/product/02-solution-hypotheses/0002-third-party-address-autofill.md
 Run `pet validate` to check the repository.
 
 $ pet reject solution-hypothesis SOL-0002 --rationale fails GDPR review for prospect data --yes
@@ -171,7 +171,7 @@ $ pet accept qa-plan QA-0001 --yes
 Accepted QA-0001.
 
 $ pet new release --features FEAT-0001 v0.1.0
-Created /private<REPO>/doc/product/06-releases/0001-v0-1-0.md
+Created <REPO>/doc/product/06-releases/0001-v0-1-0.md
 Run `pet validate` to check the repository.
 
 $ pet release --release REL-0001 --yes

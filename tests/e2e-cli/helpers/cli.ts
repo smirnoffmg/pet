@@ -39,9 +39,14 @@ export function normalize(raw: string, fixtureRoot?: string): string {
   let out = raw;
 
   if (fixtureRoot) {
-    out = out.split(fixtureRoot).join("<REPO>");
-    // macOS reports /var/... for /private/var/..., so both spellings occur.
-    out = out.split(fixtureRoot.replace(/^\/private/, "")).join("<REPO>");
+    // macOS resolves /var/... to /private/var/..., and `git rev-parse
+    // --show-toplevel` reports the resolved spelling while os.tmpdir() gives the
+    // bare one — so both reach the transcript. The longer spelling must go first,
+    // or redacting the bare one leaves a stray "/private" behind.
+    const bare = fixtureRoot.replace(/^\/private/, "");
+    for (const spelling of [`/private${bare}`, bare]) {
+      out = out.split(spelling).join("<REPO>");
+    }
   }
   out = out.split(repoRoot).join("<PET>");
   out = out.split(os.homedir()).join("<HOME>");
