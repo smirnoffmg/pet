@@ -38,7 +38,12 @@ export function resolveProvider(): string {
   return process.env["PET_LLM_PROVIDER"] ?? "anthropic";
 }
 
+// Ollama's small models always need the workflow spelled out. Any model reached
+// through an OpenAI-compatible gateway can need it too — the provider name says
+// nothing about what is actually serving the request — so PET_EXPLICIT_TOOL_GUIDANCE
+// turns the same hint on for a model that researches but never writes its findings.
 export function requiresExplicitToolGuidance(): boolean {
+  if (process.env["PET_EXPLICIT_TOOL_GUIDANCE"] === "1") return true;
   return resolveProvider() === "ollama";
 }
 
