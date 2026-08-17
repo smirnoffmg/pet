@@ -43,6 +43,13 @@ export type AgentBrief =
 
 export type ToolCallEvent = { name: string; path: string };
 
+// LangGraph counts every node execution — model call, tool node, each middleware
+// — against its recursion limit, and its default of 25 leaves room for only a
+// handful of research turns. Research across Jira and Confluence routinely wants
+// more, so raise it. (This was also a suspect for runs that end with an empty
+// artifact; raising it did not fix those, so it is headroom, not that fix.)
+const AGENT_RECURSION_LIMIT = 200;
+
 export async function runLiveAgent(
   role: AgentRole,
   docRoot: string,
@@ -58,7 +65,7 @@ export async function runLiveAgent(
   logger.verbose(`Brief target: ${briefTargetId(role, brief, commandKind)}`);
 
   const repoRoot = path.dirname(docRoot);
-  const mcpResult = await loadMcpTools(role, repoRoot);
+  const mcpResult = await loadMcpTools(role, repoRoot, logger);
   const { tools: mcpTools, disconnect } = mcpResult.isErr()
     ? (logger.info(`MCP config error: ${mcpResult.error.message}`),
       { tools: [], disconnect: async () => {} })
@@ -81,11 +88,17 @@ export async function runLiveAgent(
   let result: unknown;
   const started = Date.now();
   const userMessage = formatMessage(role, brief, commandKind);
+  // Streaming powers the live tool-call panel, but against an OpenAI-compatible
+  // gateway the streamed run has been observed to end early: the agent researches,
+  // then the graph stops without its closing write, leaving the artifact empty.
+  // The same model, tools and prompt complete through invoke. Until that is
+  // understood, PET_AGENT_STREAM=0 trades the live panel for a run that finishes.
+  const streamingEnabled = process.env["PET_AGENT_STREAM"] !== "0";
   try {
-    if (onToolCall) {
+    if (onToolCall && streamingEnabled) {
       const run = await agent.streamEvents(
         { messages: [{ role: "user", content: userMessage }] },
-        { version: "v3" },
+        { version: "v3", recursionLimit: AGENT_RECURSION_LIMIT },
       );
       const toolCallsTask = (async () => {
         for await (const call of run.toolCalls) {
@@ -99,9 +112,10 @@ export async function runLiveAgent(
       const [output] = await Promise.all([run.output, toolCallsTask]);
       result = output;
     } else {
-      result = await agent.invoke({
-        messages: [{ role: "user", content: userMessage }],
-      });
+      result = await agent.invoke(
+        { messages: [{ role: "user", content: userMessage }] },
+        { recursionLimit: AGENT_RECURSION_LIMIT },
+      );
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -205,9 +219,10 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, max)}…`;
 }
 
-// Ollama small models need explicit guidance on the tool-use workflow — they
-// hallucinate paths and skip tool calls without it.
-const OLLAMA_TOOL_HINT = `
+// Some models need the tool-use workflow spelled out — Ollama's small ones always,
+// others when PET_EXPLICIT_TOOL_GUIDANCE says so. Without it they hallucinate
+// paths and skip tool calls.
+const EXPLICIT_TOOL_HINT = `
 
 IMPORTANT — you MUST use tool calls to complete this task. All paths MUST be absolute (start with /):
 1. Use ls <absolute-path> or glob to discover actual file paths. NEVER guess or invent paths.
@@ -215,7 +230,7 @@ IMPORTANT — you MUST use tool calls to complete this task. All paths MUST be a
 3. Use write_file to save ALL changes. Do not describe what you would write — execute write_file.
 If creating a new file, first ls the target directory to find the next available ID and name.`;
 
-const OLLAMA_DIR_HINTS: Partial<Record<AgentRole, string>> = {
+const ROLE_DIR_HINTS: Partial<Record<AgentRole, string>> = {
   researcher:
     "The markdown artifact files are in /product/00-problem-hypotheses/. Use ls /product/00-problem-hypotheses/ to list them.",
   solution_designer:
@@ -232,7 +247,7 @@ const OLLAMA_DIR_HINTS: Partial<Record<AgentRole, string>> = {
     "Update the markdown release file in /product/06-releases/. Use ls /product/06-releases/ to find it.",
 };
 
-function ollamaDirHint(role: AgentRole, commandKind?: SubagentCommand["kind"]): string {
+function roleDirHint(role: AgentRole, commandKind?: SubagentCommand["kind"]): string {
   if (commandKind === "spawn_designer_enrich")
     return "Update the markdown feature file in /product/03-features/. Use ls /product/03-features/ to find it.";
   if (commandKind === "spawn_solution_designer")
@@ -245,7 +260,7 @@ function ollamaDirHint(role: AgentRole, commandKind?: SubagentCommand["kind"]): 
     return "Create a markdown QA plan file in /product/05-qa-plans/. Use ls /product/05-qa-plans/ to pick the next ID.";
   if (commandKind === "spawn_devops")
     return "Update the markdown release file in /product/06-releases/. Use ls /product/06-releases/ to find it.";
-  return OLLAMA_DIR_HINTS[role] ?? "";
+  return ROLE_DIR_HINTS[role] ?? "";
 }
 
 function formatMessage(
@@ -255,8 +270,8 @@ function formatMessage(
 ): string {
   const base = buildUserMessage(role, brief, commandKind);
   if (!base || !requiresExplicitToolGuidance()) return base;
-  const dirHint = ollamaDirHint(role, commandKind);
-  return base + OLLAMA_TOOL_HINT + (dirHint ? `\n${dirHint}` : "");
+  const dirHint = roleDirHint(role, commandKind);
+  return base + EXPLICIT_TOOL_HINT + (dirHint ? `\n${dirHint}` : "");
 }
 
 function buildUserMessage(

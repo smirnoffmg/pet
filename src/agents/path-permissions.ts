@@ -1,17 +1,21 @@
 import type { FilesystemPermission } from "deepagents";
 
-export type AgentRole =
-  | "architect"
-  | "techlead"
-  | "analyst"
-  | "researcher"
-  | "solution_designer"
-  | "designer"
-  | "dev"
-  | "qa"
-  | "devops"
-  | "orchestrator";
+export const AGENT_ROLES = [
+  "architect",
+  "techlead",
+  "analyst",
+  "researcher",
+  "solution_designer",
+  "designer",
+  "dev",
+  "qa",
+  "devops",
+  "orchestrator",
+] as const;
 
+export type AgentRole = (typeof AGENT_ROLES)[number];
+
+// Fallback wiring for servers that do not declare `roles` in pet.mcp.json.
 const ROLE_MCP_SERVERS: Partial<Record<AgentRole, string[]>> = {
   researcher: ["memory"],
   dev: ["memory"],

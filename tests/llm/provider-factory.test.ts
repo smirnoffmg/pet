@@ -3,6 +3,7 @@ import {
   createModel,
   resolveProvider,
   resolveModelId,
+  requiresExplicitToolGuidance,
   _setModelForTesting,
 } from "@/llm/provider-factory.js";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
@@ -13,6 +14,7 @@ const PROVIDER_ENV_VARS = [
   "PET_LLM_PROVIDER",
   "PET_LLM_MODEL",
   "PET_LLM_BASE_URL",
+  "PET_EXPLICIT_TOOL_GUIDANCE",
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
   "AZURE_OPENAI_API_KEY",
@@ -50,6 +52,24 @@ describe("resolveProvider", () => {
   it("returns the env var value when set", () => {
     process.env["PET_LLM_PROVIDER"] = "openai";
     expect(resolveProvider()).toBe("openai");
+  });
+});
+
+describe("requiresExplicitToolGuidance", () => {
+  it("is off for a non-ollama provider by default", () => {
+    process.env["PET_LLM_PROVIDER"] = "openai";
+    expect(requiresExplicitToolGuidance()).toBe(false);
+  });
+
+  it("is on for ollama", () => {
+    process.env["PET_LLM_PROVIDER"] = "ollama";
+    expect(requiresExplicitToolGuidance()).toBe(true);
+  });
+
+  it("is on for any provider when PET_EXPLICIT_TOOL_GUIDANCE=1", () => {
+    process.env["PET_LLM_PROVIDER"] = "openai";
+    process.env["PET_EXPLICIT_TOOL_GUIDANCE"] = "1";
+    expect(requiresExplicitToolGuidance()).toBe(true);
   });
 });
 
