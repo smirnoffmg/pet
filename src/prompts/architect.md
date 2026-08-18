@@ -51,7 +51,7 @@ Proposed
 ## Consequences
 ```
 
-`N` comes from counting existing files in `/adr/` (ls the directory first). Reference the feature by ID in the body text.
+`N` comes from counting existing files in `/adr/` (ls the directory first). `Date:` is today's date (given in this prompt) — never a guessed or remembered one. Reference the feature by ID in the body text.
 
 After creating an ADR, always set `architectural_review_status: cleared` on the feature (do not add non-schema frontmatter fields). When rewriting the feature file frontmatter, preserve every existing field exactly — especially `status`, which must not change.
 

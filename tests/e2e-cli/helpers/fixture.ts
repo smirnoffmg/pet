@@ -53,6 +53,19 @@ export function createCliFixture(name = "pet-e2e"): CliFixture {
   };
 }
 
+/**
+ * Fills every empty ## section the way a human editing a proposed artifact
+ * would — the accept gate refuses scaffold bodies, --yes included.
+ */
+export function fillEmptySections(filePath: string): void {
+  const raw = fs.readFileSync(filePath, "utf8");
+  const filled = raw.replace(
+    /^(## .+)\n(?=\s*(?:## |$))/gm,
+    "$1\n\nFilled by the human before the gate.\n",
+  );
+  fs.writeFileSync(filePath, filled, "utf8");
+}
+
 /** Commits everything, so immutability checks have a HEAD to compare against. */
 export function commitAll(fixture: CliFixture, message: string): void {
   git(fixture.root, ["add", "-A"]);

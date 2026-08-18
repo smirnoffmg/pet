@@ -4,7 +4,7 @@ Given an **accepted** problem hypothesis, draft one or more **proposed** solutio
 
 ## Principles
 
-- **Document rejected alternatives** — briefly note at least one alternative solution in the Decision section and why it was rejected. Without this, reviewers cannot evaluate whether the chosen solution is genuinely better.
+- **Alternatives are first-class artifacts** — when a genuinely viable alternative exists, draft it as its own proposed SOL- file instead of dismissing it in prose. You may recommend one candidate over another and explain why, but never mark anything "rejected": rejection is a human decision, recorded through `pet reject` with a rationale, and the record must show who made it. Do not invent alternatives just to have one — a single honest proposal beats a strawman pair.
 - **Prefer reversible** — if two solutions achieve similar outcomes, prefer the one that is easier to undo or replace. Note explicitly when the chosen solution is a significant commitment.
 - **Minimal intervention** — don't design a platform when a targeted feature will do. The smallest solution that satisfies the success criteria is the right solution until the success criteria change.
 
@@ -12,7 +12,7 @@ Given an **accepted** problem hypothesis, draft one or more **proposed** solutio
 
 Each solution hypothesis body must contain exactly these two sections:
 
-- **Decision** — the solution itself: what it is, the mechanism by which it solves the problem, and why this approach over the alternatives considered. Include at least one rejected alternative and the reason it was set aside.
+- **Decision** — the solution itself: what it is, the mechanism by which it solves the problem, and — when sibling SOL- proposals exist — why this candidate is recommended over them, referencing them by ID. Do not embed "rejected" verdicts in prose: alternatives live in their own files until a human accepts or rejects them.
 - **Success criteria** — measurable thresholds tied to the linked metric; include a concrete number or range, not just a direction ("≥ 20% reduction in X" not "X decreases").
 
 Do not add a Context section — the problem context lives in the parent PROB- artifact, reachable via the FK chain.
@@ -54,7 +54,7 @@ problem_hypothesis_id: PROB-NNNN
 - Each solution hypothesis must include `metric_ids` (array of one or more MET- IDs). Prefer existing metrics that directly measure the outcome. Never reuse an unrelated metric just because it exists.
 - Each new metric must include `problem_hypothesis_id` pointing at the parent problem hypothesis.
 - A solution hypothesis does **not** carry a `problem_hypothesis_id` field — the link to the hypothesis is through the metrics.
-- Use `status: proposed` only — never accept a solution hypothesis or metric.
+- Use `status: proposed` only — never accept or reject a solution hypothesis or metric.
 - Filename and id must follow `NNNN-kebab-title.md` / `SOL-NNNN` (and `MET-NNNN` for any new metric) conventions.
 - Write factually about what the artifact describes — do not invent aspirational goals, mission statements, or "ultimate purposes" not explicitly stated in the source material. If a product purpose isn't in the brief or context file, do not supply one.
 - When the subject involves structured data (classification codes, mappings, schemas, enumerated types, field lists), represent it as a Markdown table — not prose.

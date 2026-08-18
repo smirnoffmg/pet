@@ -64,14 +64,24 @@ export function featureBodyIsScaffold(body: string): boolean {
   return withoutSectionHeaders.trim().length === 0;
 }
 
+/** Names of ## sections whose content is empty or only whitespace, in body order. */
+export function emptySectionNames(body: string): string[] {
+  const parts = body.split(/^(?=## )/m);
+  const names: string[] = [];
+  for (const part of parts) {
+    if (!part.startsWith("## ")) continue;
+    const header = /^## ([^\n]+)/.exec(part);
+    const content = part.replace(/^## [^\n]+\n?/, "").trim();
+    if (content.length === 0 && header?.[1]) {
+      names.push(header[1].trim());
+    }
+  }
+  return names;
+}
+
 /** True when at least one ## section in the body has no content (empty or only whitespace). */
 export function anySectionEmpty(body: string): boolean {
-  const parts = body.split(/^(?=## )/m);
-  return parts.some((part) => {
-    if (!part.startsWith("## ")) return false;
-    const content = part.replace(/^## [^\n]+\n/, "").trim();
-    return content.length === 0;
-  });
+  return emptySectionNames(body).length > 0;
 }
 
 export function asMetricFm(artifact: ParsedArtifact): TargetMetricFrontmatter {

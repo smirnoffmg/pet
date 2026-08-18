@@ -28,6 +28,10 @@ Log: <HOME>/.local/share/pet/<HASH>/sessions/<SESSION>/run.log (also: pet logs)
 Warning: no git history found — immutability checks skipped
 
 $ pet accept metric MET-0001 --yes
+Cannot accept metric MET-0001: empty sections: Decision, How we measure.
+An accepted artifact is immutable — fill the body (or run the pipeline step that does) before accepting.
+
+$ pet accept metric MET-0001 --yes
 Accepted MET-0001.
 Warning: no git history found — immutability checks skipped
 

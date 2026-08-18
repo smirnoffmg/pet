@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import path from "node:path";
 import React from "react";
 import { render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
 import { assertBinaryBuilt, runPetOk } from "./helpers/cli.js";
-import { createCliFixture } from "./helpers/fixture.js";
+import { createCliFixture, fillEmptySections } from "./helpers/fixture.js";
 import type { CliFixture } from "./helpers/fixture.js";
 import { TreeUI } from "@/cli/tree-ui.js";
 import { ReplUI } from "@/cli/repl-ui.js";
@@ -32,6 +33,9 @@ describe("TUI entry points render the pipeline", () => {
     runPetOk(["new", "metric", "--hypothesis", "PROB-0001", "Checkout completion rate"], {
       cwd: fx.root,
     });
+    fillEmptySections(
+      path.join(fx.product, "00-problem-hypotheses", "0001-users-abandon-checkout.md"),
+    );
     runPetOk(["accept", "hypothesis", "PROB-0001", "--yes"], { cwd: fx.root });
     runPetOk(["new", "solution-hypothesis", "--metric", "MET-0001", "Inline address validation"], {
       cwd: fx.root,

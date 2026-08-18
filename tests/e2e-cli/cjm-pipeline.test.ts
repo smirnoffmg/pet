@@ -2,7 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { assertBinaryBuilt, runPet, runPetOk, transcriptOf } from "./helpers/cli.js";
-import { artifactTree, commitAll, createCliFixture, idsIn } from "./helpers/fixture.js";
+import {
+  artifactTree,
+  commitAll,
+  createCliFixture,
+  fillEmptySections,
+  idsIn,
+} from "./helpers/fixture.js";
 import type { CliFixture } from "./helpers/fixture.js";
 
 /**
@@ -68,6 +74,16 @@ describe("CJM: discovery → delivery → QA → release", () => {
       "0001-users-abandon-checkout-at-the-shipping-step.md",
     );
     expect(fs.readFileSync(hyp, "utf8")).toContain("Mock research:");
+
+    // `pet new metric` scaffolds Decision / How we measure for the human to fill;
+    // the accept gate refuses an empty body, --yes included.
+    const metric = path.join(fx.product, "01-metrics", "0001-checkout-completion-rate.md");
+    const blocked = runPet(["accept", "metric", "MET-0001", "--yes"], { cwd: fx.root });
+    record(["accept", "metric", "MET-0001", "--yes"], blocked);
+    expect(blocked.status).toBe(1);
+    expect(blocked.transcript).toContain("Cannot accept metric MET-0001");
+
+    fillEmptySections(metric);
 
     const a2 = ["accept", "metric", "MET-0001", "--yes"];
     record(a2, runPetOk(a2, { cwd: fx.root }));

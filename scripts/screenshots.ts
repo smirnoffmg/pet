@@ -324,13 +324,31 @@ function main(): void {
   // 2 — an agent run, with the live panel
   shot("02-researcher", [["discover", "--hypothesis", "PROB-0001", "--yes"]]);
 
-  // 3 — the human gate
+  // 3 — the human gate. The gate refuses an empty metric body, so the human
+  // fills it off-camera first, as they would in a real repo.
+  const metDir = path.join(fixture, "doc/product/01-metrics");
+  const met = path.join(metDir, fs.readdirSync(metDir)[0]!);
+  fs.writeFileSync(
+    met,
+    fs
+      .readFileSync(met, "utf8")
+      .replace(
+        "## Decision\n",
+        "## Decision\n\nPrecision on the thin-file segment: approvals that do not default ÷ total approvals, thin-file applicants only.\n",
+      )
+      .replace(
+        "## How we measure\n",
+        "## How we measure\n\nScoring audit log joined to loan outcomes; thin-file = tradeline_count < 3 OR bureau_score IS NULL.\n",
+      ),
+    "utf8",
+  );
   commit("discovery: thin-file hypothesis and its metric");
   pet(["accept", "metric", "MET-0001", "--yes"]);
   shot("03-accept-gate", [["accept", "hypothesis", "PROB-0001", "--yes"]]);
 
   // 4 — alternatives, one of them rejected: the talk's central claim
   pet(["discover", "--hypothesis", "PROB-0001", "--yes"]);
+  pet(["new", "solution-hypothesis", "--metric", "MET-0001", "Thin-file score recalibration"]);
   pet([
     "new",
     "solution-hypothesis",
@@ -338,14 +356,19 @@ function main(): void {
     "MET-0001",
     "Third-party bureau enrichment for prospect data",
   ]);
-  commit("two candidate solutions");
+  commit("three candidate solutions");
+  // The bureau ID is looked up, not hardcoded: in live mode the SolutionDesigner
+  // may itself create several SOL- files, shifting the numbering.
+  const solDir = path.join(fixture, "doc/product/02-solution-hypotheses");
+  const bureauFile = fs.readdirSync(solDir).find((f) => f.includes("bureau"))!;
+  const bureauId = `SOL-${bureauFile.slice(0, 4)}`;
   // Answered interactively, so the frame shows the gate a human actually passes.
   shot("04-reject-alternative", [
     {
       args: [
         "reject",
         "solution-hypothesis",
-        "SOL-0002",
+        bureauId,
         "--rationale",
         "fails GDPR review for prospect data",
       ],

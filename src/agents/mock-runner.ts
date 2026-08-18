@@ -84,10 +84,15 @@ export function runMockResearcher(docRoot: string, brief: ResearcherBrief): void
   const parsed = matter(raw);
   // Always write mock evidence regardless of current content (simulates Researcher
   // both filling empty Evidence and augmenting pre-existing Evidence).
-  const body = parsed.content.replace(
-    /## Evidence\s*\n[\s\S]*?(?=\n## |$)/i,
-    "## Evidence\n\nMock research: metric trend supports this hypothesis for Phase 2 dogfood.\n",
-  );
+  const body = parsed.content
+    .replace(
+      /## Context\s*\n(?=\s*(\n## |$))/i,
+      "## Context\n\nMock context: grounded in the project context file.\n",
+    )
+    .replace(
+      /## Evidence\s*\n[\s\S]*?(?=\n## |$)/i,
+      "## Evidence\n\nMock research: metric trend supports this hypothesis for Phase 2 dogfood.\n",
+    );
   fs.writeFileSync(hypPath, matter.stringify(body, parsed.data), "utf8");
 }
 
@@ -105,11 +110,22 @@ export function runMockSolutionDesigner(docRoot: string, brief: SolutionDesigner
       status: "proposed",
       problem_hypothesis_id: brief.hypothesisId,
     };
+    const metricTitle = `Metric for ${brief.hypothesisTitle}`;
     const metricResult = writeArtifact(
       docRoot,
       "metric",
       metricFm,
-      `Metric for ${brief.hypothesisTitle}`,
+      metricTitle,
+      `# ${metricTitle}
+
+## Decision
+
+Mock metric: share of target events over total events, 28-day window.
+
+## How we measure
+
+Mock measurement: query the service event log.
+`,
     );
     if (metricResult.isErr()) {
       throw new Error(metricResult.error.message);
@@ -124,7 +140,22 @@ export function runMockSolutionDesigner(docRoot: string, brief: SolutionDesigner
     metric_ids: metricIds,
   };
   const title = `Solution for ${brief.hypothesisTitle}`;
-  const result = writeArtifact(docRoot, "solution_hypothesis", fm, title);
+  const result = writeArtifact(
+    docRoot,
+    "solution_hypothesis",
+    fm,
+    title,
+    `# ${title}
+
+## Decision
+
+Mock solution: smallest intervention that addresses ${brief.hypothesisId}.
+
+## Success criteria
+
+Mock threshold: linked metric improves by >= 10% over baseline.
+`,
+  );
   if (result.isErr()) {
     throw new Error(result.error.message);
   }
@@ -214,7 +245,31 @@ export function runMockQa(docRoot: string, brief: QaBrief): void {
     feature_id: brief.featureId,
   };
   const title = `QA plan for ${brief.featureTitle}`;
-  const result = writeArtifact(docRoot, "qa_plan", fm, title);
+  const result = writeArtifact(
+    docRoot,
+    "qa_plan",
+    fm,
+    title,
+    `# ${title}
+
+## Test Plan
+
+Mock QA: verify ${brief.featureId} acceptance criteria end to end.
+
+## Acceptance Criteria Verification
+
+Mock verification: each criterion maps to one test case below.
+
+## Test Cases
+
+1. Happy path passes
+2. Empty input handled
+
+## Risk Areas
+
+Mock risk: regression in adjacent flows.
+`,
+  );
   if (result.isErr()) {
     throw new Error(result.error.message);
   }

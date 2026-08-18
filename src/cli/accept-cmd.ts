@@ -7,12 +7,29 @@ import { ADR_DIR } from "@/store/paths.js";
 import { validateRepo, formatReport } from "@/validators/index.js";
 import { atomicFrontmatterUpdate } from "./atomic-update.js";
 import { printDiscernmentChecklist } from "./discernment.js";
+import { emptySectionNames, featureBodyIsScaffold } from "@/controllers/discovery-helpers.js";
 import type { HypothesisFrontmatter } from "@/schemas/hypothesis.js";
 import type { SolutionHypothesisFrontmatter } from "@/schemas/solution-hypothesis.js";
 import type { FeatureFrontmatter } from "@/schemas/feature.js";
 import type { TargetMetricFrontmatter } from "@/schemas/metric.js";
 import type { QaPlanFrontmatter } from "@/schemas/qa-plan.js";
 import type { ReleaseFrontmatter } from "@/schemas/release.js";
+
+// Accepting freezes the artifact; the gate must not freeze a record that does not
+// yet contain its decision. Runs before any prompt and is not skippable via --yes:
+// --yes removes interactivity, never checks.
+function refuseUnreadyBody(kindLabel: string, id: string, body: string): boolean {
+  const empty = emptySectionNames(body);
+  if (empty.length === 0 && !featureBodyIsScaffold(body)) {
+    return false;
+  }
+  const detail = empty.length > 0 ? `empty sections: ${empty.join(", ")}` : "body is only a title";
+  console.error(
+    `Cannot accept ${kindLabel} ${id}: ${detail}.\n` +
+      `An accepted artifact is immutable — fill the body (or run the pipeline step that does) before accepting.`,
+  );
+  return true;
+}
 
 function atomicAccept(filePath: string, root: string, repoRoot: string): number {
   const result = atomicFrontmatterUpdate(filePath, { status: "accepted" }, root, repoRoot);
@@ -57,6 +74,8 @@ export async function runAcceptHypothesis(
     );
     return 1;
   }
+
+  if (refuseUnreadyBody("hypothesis", hypothesisId, artifact.body)) return 1;
 
   if (!opts.yes) {
     printDiscernmentChecklist("hypothesis", hypothesisId);
@@ -111,6 +130,8 @@ export async function runAcceptSolutionHypothesis(
     return 1;
   }
 
+  if (refuseUnreadyBody("solution hypothesis", solutionHypothesisId, artifact.body)) return 1;
+
   if (!opts.yes) {
     printDiscernmentChecklist("solution_hypothesis", solutionHypothesisId);
     const ok = await confirmGate(
@@ -163,6 +184,8 @@ export async function runAcceptFeature(
     );
     return 1;
   }
+
+  if (refuseUnreadyBody("feature", featureId, artifact.body)) return 1;
 
   if (!opts.yes) {
     printDiscernmentChecklist("feature", featureId);
@@ -224,6 +247,8 @@ export async function runAcceptAdr(adrArg: string, opts: { yes?: boolean } = {})
     return 1;
   }
 
+  if (refuseUnreadyBody("ADR", `ADR-${padded}`, raw)) return 1;
+
   if (!opts.yes) {
     printDiscernmentChecklist("adr", `ADR-${padded}`);
     const ok = await confirmGate(`Accept ADR ${n}? This is a human-in-the-loop decision.`);
@@ -278,6 +303,8 @@ export async function runAcceptMetric(
     return 1;
   }
 
+  if (refuseUnreadyBody("metric", metricId, artifact.body)) return 1;
+
   if (!opts.yes) {
     printDiscernmentChecklist("metric", metricId);
     const ok = await confirmGate(
@@ -326,6 +353,8 @@ export async function runAcceptQaPlan(
     );
     return 1;
   }
+
+  if (refuseUnreadyBody("QA plan", qaPlanId, artifact.body)) return 1;
 
   if (!opts.yes) {
     printDiscernmentChecklist("qa_plan", qaPlanId);
@@ -377,6 +406,8 @@ export async function runAcceptRelease(
     );
     return 1;
   }
+
+  if (refuseUnreadyBody("release", releaseId, artifact.body)) return 1;
 
   if (!opts.yes) {
     printDiscernmentChecklist("release", releaseId);

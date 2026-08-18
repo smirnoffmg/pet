@@ -27,7 +27,9 @@ export interface DiscoveryFixtureContext {
  *
  * The PROB-0001 hypothesis exercises the TASK-0016 `evidenceIsEmpty` regex fix:
  * the `## Evidence` heading is followed by a blank line and then another `##`
- * heading, with no body content in between.
+ * heading, with no body content in between. (Evidence is deliberately ordered
+ * before Context to keep that edge case; the section set matches the current
+ * hypothesis template — only sections the Researcher owns.)
  *
  * Integration tests should pass `ctx.repoRoot` as the `cwd` of every `spawnSync`
  * call so `findRepoRoot()` locates the temp `doc/` tree.
@@ -80,15 +82,9 @@ export function createDiscoveryFixture(): DiscoveryFixtureContext {
       "",
       "# Users have problem X",
       "",
-      "## Context",
-      "",
-      "## Decision",
-      "",
       "## Evidence",
       "",
-      "## How we measure",
-      "",
-      "## Consequences",
+      "## Context",
       "",
     ].join("\n"),
     "utf8",

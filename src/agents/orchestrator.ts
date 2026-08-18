@@ -1,6 +1,6 @@
 import { createDeepAgent, FilesystemBackend } from "deepagents";
 import { createModel } from "@/llm/provider-factory.js";
-import { loadPrompt } from "./load-prompt.js";
+import { loadPrompt, todayIsoDate, withTodayLine } from "./load-prompt.js";
 import { permissionsForRole } from "./path-permissions.js";
 import { createOrchestratorTools } from "./orchestrator-tools.js";
 import type { PetLogger } from "@/log.js";
@@ -15,7 +15,7 @@ export async function createOrchestratorAgent(docRoot: string, logger: PetLogger
 
   return createDeepAgent({
     model: await createModel(),
-    systemPrompt: loadPrompt("orchestrator"),
+    systemPrompt: withTodayLine(loadPrompt("orchestrator"), todayIsoDate()),
     backend,
     tools: [...tools],
     permissions: permissionsForRole("orchestrator"),

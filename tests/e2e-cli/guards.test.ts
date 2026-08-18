@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { assertBinaryBuilt, runPet, runPetOk } from "./helpers/cli.js";
-import { commitAll, createCliFixture } from "./helpers/fixture.js";
+import { commitAll, createCliFixture, fillEmptySections } from "./helpers/fixture.js";
 import type { CliFixture } from "./helpers/fixture.js";
 
 /**
@@ -29,6 +29,8 @@ describe("guards: immutability, gates, and FK integrity", () => {
     runPetOk(["new", "solution-hypothesis", "--metric", "MET-0001", "Inline address validation"], {
       cwd: fx.root,
     });
+    fillEmptySections(hypPath());
+    fillEmptySections(solPath());
   });
 
   afterEach(() => fx?.cleanup());

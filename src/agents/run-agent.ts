@@ -10,7 +10,7 @@ import {
 import { loadMcpTools } from "@/llm/mcp-tools.js";
 import type { PetLogger } from "@/log.js";
 import { createLogger } from "@/log.js";
-import { loadPrompt, type PromptRole } from "./load-prompt.js";
+import { loadPrompt, todayIsoDate, withTodayLine, type PromptRole } from "./load-prompt.js";
 import { permissionsForRole, type AgentRole } from "./path-permissions.js";
 import { estimateUsdFromTokens, extractTokenUsage } from "./usage.js";
 import { countMessages, extractLastAssistantText } from "./message-utils.js";
@@ -78,7 +78,7 @@ export async function runLiveAgent(
 
   const agent = createDeepAgent({
     model: await createModel(),
-    systemPrompt: loadPrompt(promptRole),
+    systemPrompt: withTodayLine(loadPrompt(promptRole), todayIsoDate()),
     backend,
     tools: mcpTools,
     permissions: permissionsForRole(role),

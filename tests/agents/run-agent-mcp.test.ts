@@ -23,6 +23,8 @@ vi.mock("@/llm/provider-factory.js", () => ({
 
 vi.mock("@/agents/load-prompt.js", () => ({
   loadPrompt: vi.fn().mockReturnValue(""),
+  withTodayLine: vi.fn((prompt: string) => prompt),
+  todayIsoDate: vi.fn().mockReturnValue("2026-01-01"),
 }));
 
 // Import after mocks are registered

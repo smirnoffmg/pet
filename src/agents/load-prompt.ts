@@ -54,3 +54,13 @@ export function loadPrompt(role: PromptRole): string {
   const filePath = path.join(promptsDir, PROMPT_FILES[role]);
   return fs.readFileSync(filePath, "utf8");
 }
+
+// Models have no clock and will otherwise invent dates from their training epoch
+// (e.g. an ADR stamped a year in the past).
+export function withTodayLine(prompt: string, isoDate: string): string {
+  return `${prompt}\n\nToday's date is ${isoDate}. Use it wherever an artifact records a date.`;
+}
+
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}

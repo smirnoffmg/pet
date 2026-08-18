@@ -19,14 +19,14 @@ export function bodyTemplateForKind(kind: ArtifactKind, title: string): string {
   }
 }
 
+// Section sets mirror who fills them: a template must not scaffold a section that
+// no pipeline role (or the human at creation time) is responsible for filling.
 function metricBody(title: string): string {
   return `# ${title}
 
-## Context
-
 ## Decision
 
-## Consequences
+## How we measure
 `;
 }
 
@@ -35,28 +35,16 @@ function hypothesisBody(title: string): string {
 
 ## Context
 
-## Decision
-
 ## Evidence
-
-## How we measure
-
-## Consequences
 `;
 }
 
 function solutionHypothesisBody(title: string): string {
   return `# ${title}
 
-## Context
-
 ## Decision
 
-## Experiments
-
 ## Success criteria
-
-## Consequences
 `;
 }
 
@@ -73,14 +61,10 @@ function featureBody(title: string): string {
 `;
 }
 
+// Title-only: DevOps appends Deployment Checklist and Rollback Plan; scaffold
+// detection (featureBodyIsScaffold) treats a title-only body as unenriched.
 function releaseBody(title: string): string {
   return `# ${title}
-
-## Context
-
-## Decision
-
-## Consequences
 `;
 }
 
