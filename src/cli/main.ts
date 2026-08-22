@@ -13,6 +13,7 @@ import {
   runAcceptRelease,
   runAcceptSolutionHypothesis,
 } from "./accept-cmd.js";
+import { runAgents } from "./agents-cmd.js";
 import { runClean } from "./clean-cmd.js";
 import { runDeliver } from "./deliver-cmd.js";
 import { runDevelop } from "./develop-cmd.js";
@@ -386,6 +387,13 @@ program
   )
   .action(async () => {
     process.exit(await runInit());
+  });
+
+program
+  .command("agents")
+  .description("Print usage instructions for AI coding agents (paste into your agent's context)")
+  .action(() => {
+    process.exit(runAgents());
   });
 
 program
